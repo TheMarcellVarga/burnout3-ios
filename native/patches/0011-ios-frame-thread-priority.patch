@@ -1,0 +1,24 @@
+--- a/host/src/threads.cpp
++++ b/host/src/threads.cpp
+@@ -35,6 +35,7 @@
+ #else
+ #include "apple_fibers.h"
+ #include <pthread.h>
++#include <TargetConditionals.h>
+ #endif
+ 
+ #include <atomic>
+@@ -1250,8 +1251,13 @@
+     SetThreadInformation(GetCurrentThread(), ThreadPowerThrottling, &throttling, sizeof throttling);
+     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+ #else
++#if TARGET_OS_IPHONE
++    // Foreground simulation, geometry and rendering have per-frame deadlines.
++    pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
++#else
+     pthread_set_qos_class_self_np(QOS_CLASS_USER_INITIATED, 0);
+ #endif
++#endif
+ }
+ 
+ }  // namespace ps2host

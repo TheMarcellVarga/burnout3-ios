@@ -1,0 +1,166 @@
+--- a/gpu/src/gs_renderer.cpp
++++ b/gpu/src/gs_renderer.cpp
+@@ -145,6 +145,7 @@
+ struct SwizzleParams {
+     std::uint32_t bp, bw, psm, cols, rows, stride, to_memory, depth, row0;
+     std::uint32_t scale = 1;    // the image's pixels to a GS pixel: one taken to memory, a square filled from it
++    std::uint32_t col0 = 0;     // first pixel column transferred
+     std::uint32_t keep_colour = 0;  // from memory: the square's colour kept where memory differs in alpha alone
+ };
+ 
+@@ -344,11 +345,11 @@
+     void MemoryRead(std::uint32_t begin, std::uint32_t end, std::uint8_t* bytes) override;
+     void MemoryPatch(const std::uint32_t* words, std::size_t count) override;
+     bool TargetToMemory(std::uint32_t fbp, std::uint32_t fbw, std::uint32_t psm, std::uint32_t cols,
+-                        std::uint32_t rows, std::uint32_t first_row) override;
++                        std::uint32_t rows, std::uint32_t first_row, std::uint32_t first_col) override;
+     void TargetFromMemory(std::uint32_t fbp, std::uint32_t fbw, std::uint32_t psm, std::uint32_t width,
+                           std::uint32_t height) override;
+     bool DepthToMemory(std::uint32_t zbp, std::uint32_t width, std::uint32_t height, std::uint32_t fbw,
+-                       std::uint32_t zpsm, std::uint32_t cols, std::uint32_t rows, std::uint32_t first_row) override;
++                       std::uint32_t zpsm, std::uint32_t cols, std::uint32_t rows, std::uint32_t first_row, std::uint32_t first_col) override;
+     void DepthFromMemory(std::uint32_t zbp, std::uint32_t width, std::uint32_t height, std::uint32_t fbw,
+                          std::uint32_t zpsm) override;
+     void TextureFromMemory(std::uint64_t key, const GsTextureDecode& decode) override;
+@@ -1203,7 +1204,7 @@
+     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, swizzle_depth_layout_, 0, 2, sets, 0, nullptr);
+     vkCmdPushConstants(cmd, swizzle_depth_layout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof params, &params);
+     ++g_dispatches;
+-    vkCmdDispatch(cmd, (params.cols + 7) / 8, (params.rows + 7) / 8, 1);
++    vkCmdDispatch(cmd, (params.cols - params.col0 + 7) / 8, (params.rows + 7) / 8, 1);
+     g_.Mark(cmd, kProfSwizzle);
+ }
+ 
+@@ -1271,7 +1272,7 @@
+     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, swizzle_image_layout_, 0, 2, sets, 0, nullptr);
+     vkCmdPushConstants(cmd, swizzle_image_layout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof params, &params);
+     ++g_dispatches;
+-    vkCmdDispatch(cmd, (params.cols + 7) / 8, (params.rows + 7) / 8, 1);
++    vkCmdDispatch(cmd, (params.cols - params.col0 + 7) / 8, (params.rows + 7) / 8, 1);
+     g_.Mark(cmd, kProfSwizzle);
+ }
+ 
+@@ -1338,7 +1339,7 @@
+ }
+ 
+ bool VulkanGsRenderer::TargetToMemory(std::uint32_t fbp, std::uint32_t fbw, std::uint32_t psm, std::uint32_t cols,
+-                                      std::uint32_t rows, std::uint32_t first_row) {
++                                      std::uint32_t rows, std::uint32_t first_row, std::uint32_t first_col) {
+     auto found = targets_.find(Key{fbp, fbw, psm});
+     if (found == targets_.end()) return false;
+     Flush();
+@@ -1347,9 +1348,11 @@
+     rows = std::min(rows, t.height);
+     if (first_row >= rows) return true;
+     rows -= first_row;
+-    if (!cols) return true;
++    if (!cols || first_col >= cols) return true;
+     g_.Record([&](VkCommandBuffer cmd) {
+-        SwizzleImage(cmd, SwizzleParams{fbp * 32, fbw, psm, cols, rows, t.pw(), 1, 0, first_row, t.scale}, t);
++        SwizzleParams params{fbp * 32, fbw, psm, cols, rows, t.pw(), 1, 0, first_row, t.scale};
++        params.col0 = std::min(first_col, cols - 1);
++        SwizzleImage(cmd, params, t);
+         MemoryBarrier(cmd);
+     });
+     return true;
+@@ -1377,7 +1380,7 @@
+ 
+ bool VulkanGsRenderer::DepthToMemory(std::uint32_t zbp, std::uint32_t width, std::uint32_t height, std::uint32_t fbw,
+                                      std::uint32_t zpsm, std::uint32_t cols, std::uint32_t rows,
+-                                     std::uint32_t first_row) {
++                                     std::uint32_t first_row, std::uint32_t first_col) {
+     auto found = depths_.find(Key{zbp, width, height});
+     if (found == depths_.end()) return false;
+     Flush();
+@@ -1386,9 +1389,11 @@
+     rows = std::min(rows, d.height);
+     if (first_row >= rows) return true;
+     rows -= first_row;
+-    if (!cols) return true;
++    if (!cols || first_col >= cols) return true;
+     g_.Record([&](VkCommandBuffer cmd) {
+-        DepthOut(cmd, SwizzleParams{zbp * 32, fbw, zpsm, cols, rows, d.pw(), 1, 1, first_row, d.scale}, d);
++        SwizzleParams params{zbp * 32, fbw, zpsm, cols, rows, d.pw(), 1, 1, first_row, d.scale};
++        params.col0 = std::min(first_col, cols - 1);
++        DepthOut(cmd, params, d);
+         MemoryBarrier(cmd);
+     });
+     return true;
+--- a/gpu/include/ps2gpu/gs_renderer.h
++++ b/gpu/include/ps2gpu/gs_renderer.h
+@@ -229,7 +229,7 @@
+        as its PSM lays them out (CT32, CT24, CT16, CT16S); false if there is
+        none. */
+     virtual bool TargetToMemory(std::uint32_t fbp, std::uint32_t fbw, std::uint32_t psm, std::uint32_t cols,
+-                                std::uint32_t rows, std::uint32_t first_row = 0) = 0;
++                                std::uint32_t rows, std::uint32_t first_row = 0, std::uint32_t first_col = 0) = 0;
+     /* A target, made at this size if there is none, loaded from GPU memory. */
+     virtual void TargetFromMemory(std::uint32_t fbp, std::uint32_t fbw, std::uint32_t psm, std::uint32_t width,
+                                   std::uint32_t height) = 0;
+@@ -237,7 +237,7 @@
+        (Z32, Z24, Z16, Z16S) FBW pages wide. */
+     virtual bool DepthToMemory(std::uint32_t zbp, std::uint32_t width, std::uint32_t height, std::uint32_t fbw,
+                                std::uint32_t zpsm, std::uint32_t cols, std::uint32_t rows,
+-                               std::uint32_t first_row = 0) = 0;
++                               std::uint32_t first_row = 0, std::uint32_t first_col = 0) = 0;
+     virtual void DepthFromMemory(std::uint32_t zbp, std::uint32_t width, std::uint32_t height, std::uint32_t fbw,
+                                  std::uint32_t zpsm) = 0;
+     /* A texture decoded from GPU memory, as the host's software GS decodes
+--- a/gpu/shaders/swizzle.comp
++++ b/gpu/shaders/swizzle.comp
+@@ -32,6 +32,7 @@
+     uint depth;         // the linear side is depth (float)
+     uint row0;          // the image's row that linear row 0 holds
+     uint scale;         // the image's pixels to a GS pixel, each way (the internal resolution)
++    uint col0;          // first column in this transfer
+     uint keep_colour;   // memory -> image, 32-bit: the square's colour kept where memory differs in alpha alone
+ } p;
+ 
+@@ -52,7 +53,7 @@
+ void main() {
+     const uint direction = specialized_direction == 0xFFFFFFFFu ? p.to_memory : specialized_direction;
+     const uint depth = specialized_depth == 0xFFFFFFFFu ? p.depth : specialized_depth;
+-    const uint x = gl_GlobalInvocationID.x, y = gl_GlobalInvocationID.y;
++    const uint x = gl_GlobalInvocationID.x + p.col0, y = gl_GlobalInvocationID.y;
+     if (x >= p.cols || y >= p.rows) return;
+     // In each GS 16-pixel column, x and x+8 occupy the low/high half
+     // of one word. Complete columns can be packed by one invocation,
+--- a/host/src/gpu_bridge.cpp
++++ b/host/src/gpu_bridge.cpp
+@@ -393,6 +393,20 @@
+     Timed timed(Section::GpuSync);
+     const TimelineStep step("sync: a write-back");
+     o.gpu_newer = false;
++    u32 first_col = 0, last_col = o.x1;
++    static const bool full_width = std::getenv("PS2HOST_GPU_FULL_WRITEBACK") != nullptr;
++    if (!full_width && o.width <= std::max(1u, o.fbw) * 64 && o.full_end <= 16384 && o.dirty_pages.any()) {
++        const u32 base = o.begin / 32, fbw = std::max(1u, o.fbw);
++        u32 min_col = fbw, max_col = 0;
++        for (u32 page = base; page < 512; ++page) if (o.dirty_pages.test(page)) {
++            const u32 col = (page - base) % fbw;
++            min_col = std::min(min_col, col); max_col = std::max(max_col, col);
++        }
++        if (min_col < fbw) {
++            first_col = std::min(min_col * 64, o.x1 ? o.x1 - 1 : 0);
++            last_col = std::min((max_col + 1) * 64, o.x1);
++        }
++    }
+     o.dirty_pages.reset();
+     o.rect_dirty = false;
+     if (o.dirty_end <= o.dirty_begin) return;
+@@ -405,11 +419,11 @@
+     // Blocks the CPU wrote go over first: the image covers them only in part.
+     Coherent(b, o.dirty_begin, o.dirty_end, true);
+     if (gs::TheGs().trace)   // in a capture's trace: an image written back to memory, which rows
+-        std::fprintf(gs::TheGs().trace_out, "[gpu] write-back %s %X/%u/%02X rows %u-%u cols %u\n", o.depth ? "Z" : "C",
++        std::fprintf(gs::TheGs().trace_out, "[gpu] write-back %s %X/%u/%02X rows %u-%u cols %u-%u\n", o.depth ? "Z" : "C",
+                      unsigned(o.fbp), unsigned(o.fbw), unsigned(o.psm), unsigned(first), unsigned(last),
+-                     unsigned(o.x1));
+-    const bool done = o.depth ? b.renderer->DepthToMemory(o.fbp, o.width, o.height, o.fbw, o.psm, o.x1, last, first)
+-                              : b.renderer->TargetToMemory(o.fbp, o.fbw, o.psm, o.x1, last, first);
++                     unsigned(first_col), unsigned(last_col));
++    const bool done = o.depth ? b.renderer->DepthToMemory(o.fbp, o.width, o.height, o.fbw, o.psm, last_col, last, first, first_col)
++                              : b.renderer->TargetToMemory(o.fbp, o.fbw, o.psm, last_col, last, first, first_col);
+     if (!done && gs::TheGs().trace) std::fprintf(gs::TheGs().trace_out, "[gpu]   (nothing to write back)\n");
+     if (done) {
+         ++b.write_backs;

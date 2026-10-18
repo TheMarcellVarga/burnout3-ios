@@ -1,0 +1,59 @@
+diff --git a/gpu/src/gpu.cpp b/gpu/src/gpu.cpp
+index 090e049..6ecc5a3 100644
+--- a/gpu/src/gpu.cpp
++++ b/gpu/src/gpu.cpp
+@@ -6,6 +6,7 @@
+ #include "gpu_internal.h"
+ 
+ #include <cstdlib>
++#include <cstring>
+ 
+ #include <cstdio>
+ #include <vector>
+@@ -28,6 +29,22 @@ bool VulkanGpu::Init(std::string* error) {
+     app.apiVersion = VK_API_VERSION_1_3;
+     VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+     ici.pApplicationInfo = &app;
++#ifdef PS2GPU_MOLTENVK
++    // Portability enumeration belongs to the Vulkan loader. Direct MoltenVK
++    // builds need it only if the runtime actually advertises it.
++    std::uint32_t instance_extension_count = 0;
++    vkEnumerateInstanceExtensionProperties(nullptr, &instance_extension_count, nullptr);
++    std::vector<VkExtensionProperties> instance_properties(instance_extension_count);
++    vkEnumerateInstanceExtensionProperties(nullptr, &instance_extension_count, instance_properties.data());
++    const char* portability_extension = VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
++    for (const auto& extension : instance_properties)
++        if (!std::strcmp(extension.extensionName, portability_extension)) {
++            ici.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
++            ici.enabledExtensionCount = 1;
++            ici.ppEnabledExtensionNames = &portability_extension;
++            break;
++        }
++#endif
+     if ((r = vkCreateInstance(&ici, nullptr, &instance)) != VK_SUCCESS) return fail("vkCreateInstance", r);
+     volkLoadInstance(instance);
+ 
+@@ -85,6 +102,11 @@ bool VulkanGpu::Init(std::string* error) {
+     features.pNext = &v13;
+     VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
+     dci.pNext = &features;
++#ifdef PS2GPU_MOLTENVK
++    const char* device_extensions[] = {"VK_KHR_portability_subset"};
++    dci.enabledExtensionCount = 1;
++    dci.ppEnabledExtensionNames = device_extensions;
++#endif
+     dci.queueCreateInfoCount = 1;
+     dci.pQueueCreateInfos = &qci;
+     if ((r = vkCreateDevice(gpu, &dci, nullptr, &device)) != VK_SUCCESS) return fail("vkCreateDevice", r);
+--- a/host/src/gpu_bridge.cpp
++++ b/host/src/gpu_bridge.cpp
+@@ -1676,6 +1676,9 @@
+             if (ps2gpu::Display* display = WindowDisplay()) {
+                 const bool pace = !VirtualClock() && SettingOn("frame_pacing", true);    // (PC SETTINGS)
+                 PresentGpuPicture(*display, pace ? FrameDue(frame) : 0);
++            } else {
++                // Native Apple UI consumes the off-screen GPU picture.
++                PresentFrame();
+             }
+         });
+     }

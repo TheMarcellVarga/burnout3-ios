@@ -1,0 +1,21 @@
+--- a/host/src/devices.cpp
++++ b/host/src/devices.cpp
+@@ -490,7 +490,8 @@
+     // Two frames: a game drawing a picture every other blank (Burnout 3)
+     // draws nothing in one of them.
+     g_capture_frame = (long long)frame + 2;
+-    GpuCaptureBegin(frame + 1, (dir / "passes").string());
++    const bool stream_only = std::getenv("PS2HOST_CAPTURE_STREAM_ONLY") != nullptr;
++    if (!stream_only) GpuCaptureBegin(frame + 1, (dir / "passes").string());
+     gs::Gs& g = gs::TheGs();
+     // The frames' GS stream (replay.bin), for --gs-replay: memory as it is
+     // now, the GPU's drawing in it, the registers, then what comes.
+@@ -498,7 +499,7 @@
+     g.Finish();
+     if (g.on_memory) g.on_memory(0, 16384, false);
+     g.BeginRecord(std::fopen((dir / "replay.bin").string().c_str(), "wb"));
+-    if (std::FILE* f = std::fopen((dir / "trace.txt").string().c_str(), "w")) {
++    if (std::FILE* f = stream_only ? nullptr : std::fopen((dir / "trace.txt").string().c_str(), "w")) {
+         g.trace_out = f;
+         g.trace = true;
+         std::fprintf(f, "[gs] ---- frame %llu (a capture)\n", static_cast<unsigned long long>(frame + 1));
