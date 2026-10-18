@@ -1,0 +1,17 @@
+diff --git a/host/src/gs_draw.cpp b/host/src/gs_draw.cpp
+index 532e21c..6bdee6c 100644
+--- a/host/src/gs_draw.cpp
++++ b/host/src/gs_draw.cpp
+@@ -107,6 +107,12 @@ private:
+     RowPool() {
+         const unsigned cores = std::thread::hardware_concurrency();
+         workers_ = cores > 2 ? std::min(cores - 1, 7u) : 1u;
++        // Mobile CPUs mix fast and efficiency cores. Let the host benchmark
++        // a smaller pool without changing row ownership or drawing order.
++        if (const char* requested = std::getenv("PS2HOST_GS_THREADS")) {
++            const int total = std::clamp(std::atoi(requested), 1, 8);
++            workers_ = unsigned(total - 1);
++        }
+         for (unsigned i = 0; i < workers_; ++i) std::thread([this] { Work(); }).detach();
+     }
+     bool Take(int* a, int* b) {

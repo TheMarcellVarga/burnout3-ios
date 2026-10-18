@@ -1,0 +1,141 @@
+diff --git a/host/src/vu.cpp b/host/src/vu.cpp
+index 6526543..aa2f540 100644
+--- a/host/src/vu.cpp
++++ b/host/src/vu.cpp
+@@ -18,7 +18,6 @@
+ #include <cstring>
+ #include <functional>
+ #include <unordered_map>
+-#include <xmmintrin.h>
+ #include <unordered_set>
+ #include <vector>
+ 
+@@ -27,6 +26,11 @@
+ #include "ps2host/vu_core.h"
+ #include "ps2rt/generated.h"
+ #include "ps2rt/vu_math.h"
++#include "ps2rt/vu_rounding.h"
++
++#if !PS2RT_VU_SSE
++#pragma STDC FENV_ACCESS ON
++#endif
+ 
+ 
+ namespace ps2host {
+@@ -807,16 +811,11 @@ namespace {
+    to nearest it came out in [0, 1], not [-0.5, 0.5], and the sine polynomial
+    after it gave corners twelve times too long - huge smoke puffs lit with
+    wrapped colours (the race's white-outs and stretched textures). */
+-struct VuRounding {
+-    unsigned saved = _mm_getcsr();
+-    VuRounding() { _mm_setcsr((saved & ~0x6000u) | 0x6000u | 0x8000u | 0x0040u); }
+-    ~VuRounding() { _mm_setcsr(saved); }
+-};
+ }  // namespace
+ 
+ Vu::u64 Vu::Run(u32 pc, u64 limit) {
+     Timed timed(data_mask_ == 0x3FF ? Section::Vu1 : Section::Vu0);
+-    VuRounding rounding;
++    lifted::ScopedVuRounding rounding;
+     const int unit = data_mask_ == 0x3FF ? 1 : 0;
+     pc &= u32(micro.size() - 1) & ~7u;
+     ++starts_[pc];
+diff --git a/runtime/src/vu0.cpp b/runtime/src/vu0.cpp
+index 07ecca9..2f5a934 100644
+--- a/runtime/src/vu0.cpp
++++ b/runtime/src/vu0.cpp
+@@ -6,11 +6,14 @@
+ 
+ #include "ps2rt/lifted.h"
+ #include "ps2rt/vu_math.h"
++#include "ps2rt/vu_rounding.h"
+ 
+ #include <cmath>
+ #include <cstdlib>
+ #include <cstring>
+-#include <xmmintrin.h>
++#if !PS2RT_VU_SSE
++#pragma STDC FENV_ACCESS ON
++#endif
+ 
+ namespace lifted {
+ 
+@@ -199,21 +202,15 @@ void RunFmac(Context& c, const FmacOp& f) {
+ }
+ 
+ /* The VU's float arithmetic rounds toward zero and flushes denormals: the
+-   host's SSE control word set so for an instruction, as ps2host's Vu::Run sets
++   host's floating-point environment set so for an instruction, as Vu::Run sets
+    it for a microprogram (VuRounding) - macro mode is the same VU0, called from
+    EE code, which runs with the host's default (to nearest).
+    PS2RT_EE_ROUND_NEAREST=1 leaves it to nearest, as emu.py's interpreter
+    (eefpu.cpp: what verification compares against). */
+ const bool kMacroNearest = std::getenv("PS2RT_EE_ROUND_NEAREST") != nullptr;
+ 
+-struct MacroRounding {
+-    unsigned saved = _mm_getcsr();
+-    MacroRounding() { if (!kMacroNearest) _mm_setcsr((saved & ~0x6000u) | 0x6000u | 0x8000u | 0x0040u); }
+-    ~MacroRounding() { if (!kMacroNearest) _mm_setcsr(saved); }
+-};
+-
+ void Cop2(Context& c, u32 word) {
+-    MacroRounding rounding;
++    ScopedVuRounding rounding(!kMacroNearest);
+     const u32 fd = (word >> 6) & 0x1F, fs = (word >> 11) & 0x1F, ft = (word >> 16) & 0x1F;
+     const u32 dest = (word >> 21) & 0xF;
+     const bool lane_on[4] = {(dest & 8) != 0, (dest & 4) != 0, (dest & 2) != 0, (dest & 1) != 0};
+diff --git a/runtime/include/ps2rt/vu_rounding.h b/runtime/include/ps2rt/vu_rounding.h
+new file mode 100644
+index 0000000..1c1a278
+--- /dev/null
++++ b/runtime/include/ps2rt/vu_rounding.h
+@@ -0,0 +1,49 @@
++#ifndef PS2RT_VU_ROUNDING_H
++#define PS2RT_VU_ROUNDING_H
++
++#include "ps2rt/vu_math.h"
++#if PS2RT_VU_SSE
++#include <xmmintrin.h>
++#else
++#include <cfenv>
++#endif
++
++namespace lifted {
++
++// Shared by VU0 macro instructions and VU microprograms. The scalar arithmetic
++// cleans subnormal operands/results itself; the host scope supplies chop rounding
++// and restores the caller's entire floating-point environment afterwards.
++class ScopedVuRounding {
++public:
++    explicit ScopedVuRounding(bool enabled = true) : enabled_(enabled) {
++        if (!enabled_) return;
++#if PS2RT_VU_SSE
++        saved_ = _mm_getcsr();
++        _mm_setcsr((saved_ & ~0x6000u) | 0x6000u | 0x8000u | 0x0040u);
++#else
++        std::fegetenv(&saved_);
++        std::fesetround(FE_TOWARDZERO);
++#endif
++    }
++    ~ScopedVuRounding() {
++        if (!enabled_) return;
++#if PS2RT_VU_SSE
++        _mm_setcsr(saved_);
++#else
++        std::fesetenv(&saved_);
++#endif
++    }
++    ScopedVuRounding(const ScopedVuRounding&) = delete;
++    ScopedVuRounding& operator=(const ScopedVuRounding&) = delete;
++
++private:
++    bool enabled_;
++#if PS2RT_VU_SSE
++    unsigned saved_;
++#else
++    std::fenv_t saved_;
++#endif
++};
++
++}  // namespace lifted
++#endif
