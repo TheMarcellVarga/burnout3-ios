@@ -32,6 +32,7 @@ apple_shader(gs_frag_blend gs.frag -DSHADER_BLEND)
 apple_shader(gs_frag_local gs.frag -DSHADER_BLEND -DLOCAL_READ)
 apple_shader(swizzle_image_comp swizzle.comp -DIMAGE)
 apple_shader(swizzle_depth_comp swizzle.comp -DDEPTH_IMAGE)
+apple_shader(decode_image_comp decode.comp -DTO_IMAGE)
 add_library(ps2gpu_apple STATIC "${ENGINE}/gpu/src/gpu.cpp" "${ENGINE}/gpu/src/gs_renderer.cpp" ${PS2GPU_SHADER_HEADERS})
 target_include_directories(ps2gpu_apple PUBLIC "${ENGINE}/gpu/include" PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/native/gpu" "${MVK_ROOT}/include" "${PS2GPU_SHADER_DIR}")
