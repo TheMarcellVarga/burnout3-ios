@@ -327,3 +327,133 @@ while retaining the CPU/GPU optimizations. Its on-device math/GPU checks pass,
 and a clean normal launch reports `playing` with the real-time worker active.
 The rendering lag remains unresolved at the measured frame rate. See [GPU status](GPU_STATUS.md) for reproduction commands,
 evidence and remaining limits.
+
+
+## Native rendering performance, build 41
+
+The iOS implementation retains burnout3-pc's native recompilation architecture,
+compiled for ARM64, with Vulkan through MoltenVK/Metal. Upstream shader
+specialization, asynchronous pipeline creation and persistent caching are
+backported without replacing the Apple host. Additional NEON clean-value
+tracking preserves the existing PS2 math model. Full main-scene submissions
+are now counted independently from VIF transfers and drawable presentations.
+
+The default performance preset omits live car reflections, glow, blur and depth
+haze, and caps the world far clip at 240 units; the internal image is still
+640×448. Skipping reflection cameras alone caused corrupt car textures because
+the GS reuses their memory. The paired reflection-overlay omission fixes that
+artifact while retaining paint/decals and the complete main view. A tested
+180-unit clip did not establish a speed improvement and was reverted.
+
+Build 41 reaches the real race replay's blank 12000 with no reported failure.
+Main-world rendering min/median/max is 44.4/59.5/60.9 submissions/s across 42
+two-second intervals. Displayed frames from blank 8000 measure
+57.4/59.4/60.4 FPS across 33 intervals. This is a substantial improvement over
+build 22's 28.3 median presentation, but busy-scene geometry still falls below
+60; locked 60 FPS and higher internal resolutions remain unproven. All six Mac
+regression groups, 512 captured exact VU states, 512 fast-mode states (excluding
+intentionally omitted MAC/STATUS) and the device GPU/math checks pass. The
+primitive-bounds cleanup preserves the captured race image and full GS memory
+byte for byte. See GPU_STATUS.md for individual experiments and evidence.
+
+
+## Original PS2 view distance, builds 44–45
+
+The user rejected the aggressive camera clipping, accepting lower frame rates
+in exchange for PS2-equivalent visibility. Build 44 removes the far-plane
+modification entirely; an observer logs the game's own 2000/10000-unit camera
+values without changing them. These are camera clip planes, not metres or a
+single visible horizon. The short actual-race baseline reaches blank 8400, but
+its busy-scene main-world median is 27.9 submissions/s (minimum 23.6), so it
+does not yet establish the desired 30–40 FPS floor at original distances.
+
+Build 45 keeps those original camera values. A device Time Profiler capture
+identified VU0 macro floating-point state changes as a CPU hotspot. Strictly
+adjacent translated macro instructions now share their rounding scope, with
+labels, EE operations and calls ending a group. Full register results and host
+rounding/exception state match individual execution in differential tests.
+All six Mac regression groups pass after regenerating the translation.
+A synthetic 12-instruction Mac batch benchmark reduces the median from
+96.138 to 22.608 ms for 2.4 million instructions, with matching output; this
+is not a whole-game FPS claim. The iPhone race check determines its real effect.
+
+
+Build 45's on-device check now completes the longer actual race replay through
+blank 12000 with original camera distances unchanged, no failure and passing
+GPU/math tests. Main-scene min/median/max is 47.0/59.9/61.1 submissions/s over
+42 two-second intervals; presentation is 53.6/59.4/60.0 FPS across 33 intervals
+from blank 8000. The scene counter's initial boundary can count one extra
+submission. The measured minimum is above the user's accepted 30–40 range.
+This satisfies the revised compromise in the checked race, without establishing
+locked 60 on every track or long thermal sessions. The app was reopened normally
+without diagnostic flags. Evidence and the remaining quality reductions are
+listed in GPU_STATUS.md.
+
+
+## Restored car materials, build 46
+
+Build 46 restores the original live reflection/material passes and every-frame
+reflection cameras by default, fixing the flat paint/glass introduced by build
+45's quality reduction. Car meshes, textures and original view distances are
+retained. The simplified material path is now an explicit developer diagnostic
+only (`--flat-reflections`); stale/periodic auxiliary-map startup options were
+removed. Blur/glow/depth haze remain reduced.
+
+The complete actual-race replay reaches blank 12000 without failure. Main-scene
+min/median/max is 24.7/48.55/61.0 submissions/s across 42 two-second intervals;
+presentations from blank 8000 measure 47.2/54.7/60.4 FPS across 33 intervals.
+The physical-device GPU and extended math checks pass. The original material
+path improves appearance at a measurable performance cost: busy scenes still
+fall below the user's desired 30–40 floor. The earlier flat-material 59.9 median
+and 47 minimum must not be attributed to this preset. The app was reopened
+normally after the completed test. See GPU_STATUS.md for evidence and images.
+
+
+## Graphics-preserving GS waits, build 47
+
+The GS producer now sleeps on a predicate-based condition variable when its
+16 MiB ring is full, instead of repeatedly yielding. Ordering, wraparound,
+drain and failure propagation are covered by a new concurrency regression,
+which also verifies that a blocked producer consumes little CPU. All seven
+Mac regression groups and ten consecutive concurrency runs pass.
+The full device race completes with min/median/max scene rates of
+32.4/46.4/60.9 submissions/s in two-second intervals. The floor improved from
+build 46's 24.7, but a stable 40 FPS floor remains unproven. Graphics are retained.
+
+
+## Current follow-up, builds 48–50
+
+Build 48 adds exact zero-area triangle rejection, with byte-identical captured
+race images and all 4 MiB of GS memory before/after. Build 49 reuses initialized
+DMA snapshot storage for memcpy-based appends; new tests cover growth, run
+boundaries, source mutation and pool reuse. All seven regression groups pass.
+Device GPU and runtime checks pass, but full race performance remains variable:
+build 48 min/median scene rates 30.0/47.0; build 49 18.4/23.8. The latter run
+slowed before the changed asynchronous copy path became active, so attribution
+is unresolved. A reliable 30/40/60 FPS floor cannot be claimed.
+
+Build 50 fixes missing Game Mode eligibility metadata: current and compatibility
+Game Mode keys plus the racing-game category. Boolean types and values are
+verified in the built app. On-device activation and FPS benefit need checking.
+Graphics and original world camera distances remain unchanged. See GPU_STATUS.md
+for complete evidence and limitations.
+
+
+## POC performance default, build 51
+
+The user now prioritizes a 50–60 FPS proof of concept and postpones visual
+kinks. The default therefore returns to the previously measured near-60 fast
+preset: original meshes, textures, LOD and main view distances, with live
+reflection cameras/overlays disabled and reduced post effects. Materials look
+flatter. `--live-reflections` restores the fuller material path for later work.
+The build-45 fast-preset figures are historical; build 51 still needs a fresh
+race measurement.
+
+Build 50 did not expose a Game Overlay entry according to the user. Build 51
+uses the general Games category with both Game Mode keys. A fresh installation
+was performed after backing up all Documents and Library data. The complete
+disc and user data are restored, and restored memory-card hashes match. App
+signature verification passes and the valid profile includes the phone, but
+iOS currently rejects launch with a developer trust/security error. The user
+has been asked to trust their developer profile in Settings. Game Mode and
+race validation remain pending that device action.

@@ -22,17 +22,24 @@ these experiments. Xcode will handle development signing for the iPhone.
 - Five Mac test groups pass, covering host/VU semantics, Apple fibers, I/O and arithmetic.
 - Signed math-probe build 2 runs on the physical iPhone 15 Pro Max with iOS 27.0.1. The full iOS host also reaches frame 1,200 on that phone and renders the original memory-card prompt. Its report and frame were retrieved from the device.
 
-The Vulkan/Metal GPU path passes pixel tests on the Mac and iPhone and reaches
-the original title screen on the phone. The installed build uses GPU drawing
-by default. Build 24 adds real-time simulation with an asynchronous geometry
-worker and direct Metal presentation; sustained 60 FPS racing remains unverified. See [GPU status](docs/GPU_STATUS.md).
-Build 17 also compiles captured VU geometry programs and uses ARM64 vector
-arithmetic. The tested compact-car selector now holds normal 60 Hz simulation
-pacing on the phone, with about 30 geometry updates per second; the original
-slow run managed about seven. Captured geometry states and the selector image
-match the interpreter exactly. Build 24 expands the race geometry corpus and
-reduces graphics-memory transfer work. See GPU status for measured race rates
-and the remaining rendering limit.
+The Vulkan/Metal path passes pixel tests on the Mac and iPhone. The iOS port
+uses burnout3-pc's native recompilation architecture: translated EE and captured
+VU code compiled for ARM64, with Vulkan graphics executed through MoltenVK/Metal.
+The newer upstream specialized shaders, image decoding and pipeline cache are
+backported locally; additional NEON optimizations preserve the PS2 math model.
+
+The current POC preset prioritizes 50–60 FPS. It retains the original car
+meshes, textures and LOD at 640×448, while disabling
+live reflection cameras/overlays, glow, speed blur and depth haze. Car materials
+look flatter as a result. Original camera distances are retained. The 1700-unit
+camera experiment did not improve the measured rate and was reverted.
+`--live-reflections` restores the fuller material path; `--original-quality`
+also restores the other effects. Build 53 tests the original queue wait strategy
+with this fast POC preset. Its device race check is pending; a stable 50 FPS
+floor is not yet established. Game Mode support keys and the Games category
+are included, but activation is not confirmed on this device.
+Full scene submissions, DMA transfers and drawable presentations are measured
+separately. See [GPU status](docs/GPU_STATUS.md) for evidence and limitations.
 
 See [development status](docs/NATIVE_STATUS.md) for remaining work and limits.
 
