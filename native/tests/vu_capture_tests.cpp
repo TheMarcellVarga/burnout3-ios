@@ -25,7 +25,8 @@ static void Load(ps2host::Vu& vu, const Capture& capture) {
     vu.p = s.flags[3]; vu.top = s.flags[4]; vu.itop = s.flags[5];
 }
 int main(int argc, char** argv) {
-    if (argc != 2) return 64;
+    if (argc != 2 && !(argc == 3 && std::strcmp(argv[2], "--fast") == 0)) return 64;
+    const bool fast = argc == 3;
     auto* file = std::fopen(argv[1], "rb");
     if (!file) return 1;
     std::vector<Capture> captures;
@@ -41,6 +42,7 @@ int main(int argc, char** argv) {
     std::fclose(file);
     if (captures.empty()) return 1;
     ps2host::Vu interpreted(1), compiled(1);
+    compiled.fast = fast;
     interpreted.use_compiled = false;
     std::vector<std::array<std::uint64_t, 2>> expected_kicks, actual_kicks;
     interpreted.on_kick = [&](auto lo, auto hi) { expected_kicks.push_back({lo, hi}); };
@@ -56,14 +58,16 @@ int main(int argc, char** argv) {
         auto end = std::chrono::steady_clock::now();
         before_ms += std::chrono::duration<double, std::milli>(middle - start).count();
         after_ms += std::chrono::duration<double, std::milli>(end - middle).count();
-        if (pairs != compiled_pairs || !interpreted.SameState(compiled) || expected_kicks != actual_kicks) {
+        // Fast mode omits unobserved MAC/STATUS results, including their
+        // pending writes. Geometry, packets, memory and timing must agree.
+        if (pairs != compiled_pairs || !interpreted.SameState(compiled, !fast) || expected_kicks != actual_kicks) {
             std::fprintf(stderr, "VU mismatch at PC %04X\n", capture.state.pc);
             return 1;
         }
     }
-    std::printf("%zu captures match: registers, flags, memory, cycles and GIF packets; "
+    std::printf("%zu captures match: registers, %smemory, cycles and GIF packets; "
                 "%llu/%llu pairs compiled; interpreter %.2f ms, compiled %.2f ms\n",
-                captures.size(), (unsigned long long)compiled.compiled_pairs(),
+                captures.size(), fast ? "" : "flags, ", (unsigned long long)compiled.compiled_pairs(),
                 (unsigned long long)compiled.pairs(), before_ms, after_ms);
     return compiled.compiled_pairs() ? 0 : 1;
 }
