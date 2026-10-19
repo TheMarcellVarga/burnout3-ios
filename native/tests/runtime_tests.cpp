@@ -2,6 +2,7 @@
 #include "ps2rt/vu_rounding.h"
 #include <cfenv>
 #include <cstdio>
+#include <cstring>
 #include <cstdlib>
 #include <initializer_list>
 
@@ -25,6 +26,61 @@ bool VuChopActive() {
     return std::fegetround() == FE_TOWARDZERO;
 #endif
 }
+
+void CheckMacroBatches(bool nearest) {
+    const u32 values[] = {0, 0x80000000u, 1, 0x007fffffu, 0x00800000u,
+        0x3f800000u, 0x33c00000u, 0x7f7fffffu, 0xff7fffffu, 0x7f800000u,
+        0xff800000u, 0x7fc12345u};
+    u32 rng = 0x13579bdu;
+    auto next = [&] { rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5; return rng; };
+    for (int mode : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
+        for (int sample = 0; sample < 128; ++sample) {
+            lifted::Context expected{};
+            for (auto& reg : expected.vf) for (auto& lane : reg) lane = values[next() % 12];
+            for (auto& lane : expected.vf[0]) lane = 0;
+            expected.vf[0][3] = 0x3f800000u;
+            for (auto& lane : expected.vacc) lane = values[next() % 12];
+            for (auto& reg : expected.vc) reg = values[next() % 12];
+            lifted::Context actual = expected;
+            u32 words[64];
+            for (u32& word : words) {
+                word = (0x12u << 26) | (1u << 25) | ((next() & 15) << 21) |
+                    ((next() & 31) << 16) | ((next() & 31) << 11) | ((next() & 31) << 6);
+                // Synthetic ISA encodings, including masked/aliased writes,
+                // broadcast and accumulator inputs. No game code is embedded.
+                lifted::FmacOp op;
+                u32 function = next() % 0x30;
+                while (!lifted::DecodeFmac(word | function, &op)) function = (function + 1) % 0x30;
+                word |= function;
+            }
+            std::fesetround(mode);
+            std::feclearexcept(FE_ALL_EXCEPT);
+            std::feraiseexcept(FE_DIVBYZERO);
+            for (u32 word : words) lifted::Cop2(expected, word);
+            const int flags = std::fetestexcept(FE_ALL_EXCEPT);
+            std::feclearexcept(FE_ALL_EXCEPT);
+            std::feraiseexcept(FE_DIVBYZERO);
+            lifted::Cop2Batch(actual, words, 64);
+            Check(std::memcmp(expected.vf, actual.vf, sizeof expected.vf) == 0 &&
+                  std::memcmp(expected.vacc, actual.vacc, sizeof expected.vacc) == 0 &&
+                  std::memcmp(expected.vc, actual.vc, sizeof expected.vc) == 0, "batch matches individual VU macros");
+            Check(std::fegetround() == mode, "batch restores caller rounding");
+            Check(std::fetestexcept(FE_ALL_EXCEPT) == flags, "batch matches caller exception flags");
+        }
+        const u32 invalid[] = {Add(3, 1, 2), 0xffffffffu};
+        lifted::Context c{};
+        std::feclearexcept(FE_ALL_EXCEPT);
+        std::feraiseexcept(FE_DIVBYZERO);
+        bool caught = false;
+        try { lifted::Cop2Batch(c, invalid, 2); }
+        catch (const lifted::Abort& e) { caught = e.reason == 5; }
+        Check(caught && std::fegetround() == mode, "batch exception restores rounding");
+        if (!nearest) Check(std::fetestexcept(FE_ALL_EXCEPT) == FE_DIVBYZERO, "batch exception restores status");
+    }
+    std::fesetround(FE_TONEAREST);
+    std::feclearexcept(FE_ALL_EXCEPT);
+}
+
 }
 
 int RunRuntimeTests() {
@@ -81,6 +137,7 @@ int RunRuntimeTests() {
     Check(generated::FloatDiv(0x3f800000u, 0) == 0, "EE zero divisor");
     Check(generated::FloatAdd(0x3f800000u, 0x33c00000u) ==
           (nearest ? 0x3f800001u : 0x3f800000u), "EE rounding");
+    CheckMacroBatches(nearest);
     std::printf("Runtime: %s (%s mode)\n", failures ? "FAIL" : "PASS", nearest ? "verification" : "console");
     return failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }

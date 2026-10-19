@@ -6,8 +6,32 @@ build/; no assets or instructions from the disc are executed by this script.
 """
 import argparse
 import json
+import re
 import subprocess
 from native_common import UPSTREAM, BUILD, require_upstream, compiler
+
+
+def batch_cop2(source):
+    """Group strictly adjacent VU macros; labels, EE operations and calls end runs."""
+    pattern = re.compile(r'^    lifted::Cop2\(c, (0x[0-9A-Fa-f]+u)\);(?:  /\*.*\*/)?$')
+    result, pending = [], []
+    def flush():
+        if len(pending) > 1:
+            words = ', '.join(word for _, word in pending)
+            result.append('    { static constexpr u32 ops[] = {' + words + '};\n'
+                          '      lifted::Cop2Batch(c, ops, sizeof ops / sizeof *ops); }\n')
+        else:
+            result.extend(line for line, _ in pending)
+        pending.clear()
+    for line in source.splitlines(keepends=True):
+        match = pattern.fullmatch(line.rstrip('\n'))
+        if match:
+            pending.append((line, match[1]))
+        else:
+            flush()
+            result.append(line)
+    flush()
+    return ''.join(result)
 
 
 def main():
@@ -32,7 +56,7 @@ def main():
         path = work / f'game_{index:03d}.cpp'
         path.write_text('// Generated from the local disc. NOT behaviorally verified.\n'
                         '#include "ps2rt/lifted.h"\nusing namespace generated;\nusing namespace lifted;\n\n' +
-                        '\n'.join(translated[a] for a in group))
+                        '\n'.join(batch_cop2(translated[a]) for a in group))
         paths.append(path)
     # Remove only stale generated chunks in this dedicated output directory.
     for stale in work.glob('game_*.cpp'):
