@@ -1,4 +1,5 @@
 #include "ps2host/run.h"
+#include "ps2host/chain_copy.h"
 #include "msvc_crt.h"
 #include "apple_touch_input.h"
 #include "apple_audio_sink.h"
@@ -19,6 +20,25 @@ void CloseFakeAudio() { ++device_closes; }
 void WriteFakeAudio(const short*, unsigned count) { device_frames += count; }
 }
 int main() {
+    // Queued DMA must own the exact source bytes even if guest memory changes.
+    // Exercise growth, empty runs, run boundaries, and reuse after consumption.
+    ps2host::detail::DmaChainCopy snapshot;
+    std::vector<std::uint32_t> packet(70003);
+    for (unsigned i = 0; i < packet.size(); ++i) packet[i] = i * 2654435761u;
+    const auto original = packet;
+    snapshot.Append(packet.data(), 3, 0x1000);
+    snapshot.Append(nullptr, 0, 0x2000);
+    snapshot.Append(packet.data() + 3, unsigned(packet.size() - 3), 0x3000);
+    std::fill(packet.begin(), packet.end(), 0xDEADBEEFu);
+    if (snapshot.used != original.size() || snapshot.runs.size() != 3 ||
+        snapshot.runs[0] != std::make_pair(3u, 0x1000u) ||
+        snapshot.runs[1] != std::make_pair(0u, 0x2000u) ||
+        snapshot.runs[2] != std::make_pair(unsigned(original.size() - 3), 0x3000u) ||
+        !std::equal(original.begin(), original.end(), snapshot.words.begin())) return 30;
+    snapshot.Reset();
+    snapshot.Append(packet.data(), 17, 0x4000);
+    if (snapshot.used != 17 || snapshot.runs.size() != 1 ||
+        !std::equal(packet.begin(), packet.begin() + 17, snapshot.words.begin())) return 31;
     // The real-time consumer must preserve stereo samples, bound the queue,
     // fade on underrun and resume after refilling, across ring wraparound.
     applehost::AudioRing ring;
