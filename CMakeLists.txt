@@ -79,7 +79,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     enable_language(OBJCXX)
     if(BURNOUT_BUILD_HEADLESS)
         add_executable(BurnoutNativeProbe MACOSX_BUNDLE
-            native/ios/main.mm native/ios/native_boot.mm native/ios/game_launch.mm native/ios/analog_stick.mm native/tests/analog_tracking_tests.mm native/ios/audio.mm native/tests/runtime_tests.cpp)
+            native/ios/main.mm native/ios/native_boot.mm native/ios/mobile_quality.cpp native/ios/sixty_fps.cpp native/ios/game_launch.mm native/ios/analog_stick.mm native/tests/analog_tracking_tests.mm native/ios/audio.mm native/tests/runtime_tests.cpp)
         target_compile_definitions(BurnoutNativeProbe PRIVATE BURNOUT_NATIVE_HOST=1)
         target_include_directories(BurnoutNativeProbe PRIVATE native/ios)
         target_link_libraries(BurnoutNativeProbe PRIVATE burnout_game_host)

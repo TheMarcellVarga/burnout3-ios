@@ -3,6 +3,8 @@
 #import "game_launch.h"
 #if PS2HOST_VULKAN
 #import "gpu_display.h"
+#include "ps2gpu/gs_renderer.h"
+#include "pipeline_hints.h"
 #endif
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <cstring>
@@ -24,6 +26,11 @@ extern const std::size_t kGuestFunctionCount;
 extern const ps2host::OverlayEntry kGuestOverlays[];
 extern const std::size_t kGuestOverlayCount;
 void RegisterGameOverrides();
+void RegisterMobileQuality();
+void RegisterSixtyFps();
+void RegisterNativeRaceMetrics();
+void RegisterMobileAuxRefresh(unsigned);
+unsigned long long NativeRaceDrawCalls();
 unsigned long long RaceWorldCalls();
 NSDictionary *RunAnalogTrackingChecks(AnalogStick *, AnalogStick *, UIView *);
 #if PS2HOST_VULKAN
@@ -428,6 +435,17 @@ static BOOL SupportedDisc(NSURL *url) {
             const auto run_start = std::chrono::steady_clock::now();
             int code = 3;
             NSString *failure = nil;
+            const bool mobile_quality = ![NSProcessInfo.processInfo.arguments containsObject:@"--original-quality"];
+#if PS2HOST_VULKAN
+            // POC prioritizes 50–60 FPS. Keep original meshes/textures and
+            // camera distances; restore dynamic maps with --live-reflections.
+            const bool flat_reflections = mobile_quality &&
+                ![NSProcessInfo.processInfo.arguments containsObject:@"--software-renderer"] &&
+                ![NSProcessInfo.processInfo.arguments containsObject:@"--live-reflections"];
+#else
+            const bool flat_reflections = false;
+#endif
+            const unsigned auxiliary_interval = flat_reflections ? 0 : 1;
             try {
 #if PS2HOST_VULKAN
                 if ([NSProcessInfo.processInfo.arguments containsObject:@"--gpu-tests"]) {
@@ -443,11 +461,21 @@ static BOOL SupportedDisc(NSURL *url) {
                 ps2host::RegisterFunctions(kGuestFunctions, kGuestFunctionCount);
                 ps2host::RegisterOverlays(kGuestOverlays, kGuestOverlayCount);
                 RegisterGameOverrides();
+                RegisterSixtyFps();
+                RegisterNativeRaceMetrics();
+#if PS2HOST_VULKAN
+                ps2gpu::SetPipelineCacheDir(output_path);
+                ps2gpu::SetPipelineHints(kGpuPipelineHints, std::size(kGpuPipelineHints));
+#endif
+                if (mobile_quality) RegisterMobileQuality();
+                RegisterMobileAuxRefresh(auxiliary_interval);
+                if (flat_reflections) setenv("BURNOUT3_FLAT_REFLECTIONS", "1", 1);
                 ps2host::Options options;
                 options.disc_path = disc_path;
                 options.memcard = card_path;
                 options.audio = true;
-                if ([NSProcessInfo.processInfo.arguments containsObject:@"--race-no-blur"])
+                options.vu_fast = mobile_quality;
+                if (mobile_quality || [NSProcessInfo.processInfo.arguments containsObject:@"--race-no-blur"])
                     options.settings.push_back("blur=off");
 #if PS2HOST_VULKAN
                 options.gpu = ![NSProcessInfo.processInfo.arguments containsObject:@"--software-renderer"];
@@ -517,12 +545,20 @@ static BOOL SupportedDisc(NSURL *url) {
             std::fflush(stderr);
             const bool reached = ps2host::UntilFrameReached();
             NSDictionary *report = @{@"target_reached": @(reached), @"target_frame": @(target_frame),
+                @"quality_preset": mobile_quality ? @"mobile performance" : @"original",
+                @"vu_fast": @(mobile_quality),
                 @"presentation": owner.gpuView ? @"direct Metal" : @"CPU image",
                 @"renderer": ps2host::GpuPrimary() ? @"GPU (MoltenVK/Metal)" : @"software",
                 @"gpu_summary": [NSString stringWithUTF8String:ps2host::GpuShadowSummary().c_str()],
                 @"vu1_pairs": @(ps2host::Vu1().pairs()),
                 @"vu1_compiled_pairs": @(ps2host::Vu1().compiled_pairs()),
                 @"race_world_calls": @(RaceWorldCalls()),
+                @"world_render_submissions": @(NativeRaceDrawCalls()),
+                @"auxiliary_refresh_interval": @(auxiliary_interval),
+                @"flat_reflections": @(flat_reflections),
+                @"car_materials": flat_reflections ? @"POC diffuse materials" : @"original live reflections",
+                @"world_far_clip_override": @0,
+                @"world_draw_distance": @"original game cameras",
                 @"host_exit_code": @(code), @"run_seconds": @(run_seconds),
                 @"profile": [NSString stringWithUTF8String:ps2host::ProfileSummary().c_str()],
                 @"thermal_state": @(NSProcessInfo.processInfo.thermalState),

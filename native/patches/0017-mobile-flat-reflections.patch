@@ -1,0 +1,24 @@
+--- a/host/src/gpu_bridge.cpp
++++ b/host/src/gpu_bridge.cpp
+@@ -1177,6 +1177,21 @@
+     state.sprite_prim = type == 6;
+     const bool fst = (call.prim >> 8) & 1;
+     const u32 tw = 1u << std::min(Bits(c.tex0, 26, 4), 10u), th = 1u << std::min(Bits(c.tex0, 30, 4), 10u);
++    // Burnout 3 mobile quality: omit the environment-map overlay on the
++    // display view when its three dynamic cameras are disabled. Their GS
++    // pages are reused as scratch, so sampling a stale map is not safe.
++    static const bool flat_reflections = std::getenv("BURNOUT3_FLAT_REFLECTIONS") != nullptr;
++    const u32 reflection_fbp = Bits(c.tex0, 0, 14) / 32;
++    if (flat_reflections && s.primary && type >= 3 && type <= 5 &&
++        state.textured && state.fbp < 0xD2 &&
++        reflection_fbp >= 0x16B && reflection_fbp <= 0x1A7 &&
++        Bits(c.tex0, 20, 6) <= 1 && tw <= 256 && th <= 256) {
++        static unsigned described = 0;
++        if (described++ < 8)
++            std::fprintf(stderr, "[mobile] omit reflection overlay: FBP %X, TBP %X, %ux%u\n",
++                state.fbp, Bits(c.tex0, 0, 14), tw, th);
++        return;
++    }
+     // The primitive as triangles, and the pixels it can reach.
+     ps2gpu::GsVertex v[6];
+     bool gouraud = state.gouraud;
