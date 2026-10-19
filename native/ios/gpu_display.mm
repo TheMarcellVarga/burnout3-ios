@@ -3,6 +3,7 @@
 #import <QuartzCore/CAMetalLayer.h>
 #include "ps2gpu/display.h"
 #include "gpu_internal.h"
+#include "ps2host/run.h"
 #import <MoltenVK/mvk_deprecated_api.h>
 #include <memory>
 #include <cstdio>
@@ -35,6 +36,7 @@ public:
     bool Init() {
         std::string error;
         setenv("MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS", "1", 1);
+        setenv("PS2HOST_SKIP_UNCHANGED_PRESENT", "1", 1);
         gpu_ = ps2gpu::CreateGpu(&error);
         if (!gpu_) { std::fprintf(stderr, "[display] %s\n", error.c_str()); return false; }
         auto& gpu = static_cast<ps2gpu::VulkanGpu&>(*gpu_);
@@ -108,8 +110,11 @@ public:
             // Allow normal 60 Hz arrival jitter; drawable availability bounds
             // the real screen rate, not a strict 16 ms CPU deadline.
             const auto now = std::chrono::steady_clock::now();
-            if (now - last_present_ < std::chrono::microseconds(8000)) return true;
-            if (dispatch_semaphore_wait(slots_, DISPATCH_TIME_NOW)) return true;
+            const bool accelerated = ps2host::VirtualClock() || ps2host::FastForward() > 1;
+            if (accelerated && now - last_present_ < std::chrono::microseconds(8000)) return true;
+            const dispatch_time_t deadline = accelerated ? DISPATCH_TIME_NOW :
+                dispatch_time(DISPATCH_TIME_NOW, 16 * NSEC_PER_MSEC);
+            if (dispatch_semaphore_wait(slots_, deadline)) return true;
             last_present_ = now;
             id<CAMetalDrawable> drawable = [layer_ nextDrawable];
             if (!texture || !drawable) { dispatch_semaphore_signal(slots_); return false; }
