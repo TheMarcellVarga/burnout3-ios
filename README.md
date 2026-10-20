@@ -57,10 +57,12 @@ supplied separately.
 - **Development tools:** a macOS headless host, translation checks, runtime
   regressions, GPU pixel tests and scripted device diagnostics.
 
-The committed validation reports include physical iPhone 15 Pro Max tests on
-**iOS 27.0.1**, seven Mac regression groups, device GPU/math checks and recorded
-race runs. Of 9,368 analyzed game functions, 9,366 translate into 44 C++ chunks;
-that translation count does not mean every function is behaviorally verified.
+Development notes document physical iPhone 15 Pro Max checks on **iOS 27.0.1**,
+seven Mac regression groups, GPU/math checks and recorded race runs. The raw
+device reports and captures are kept under ignored `local/` paths and are not
+included here. Of 9,368 analyzed game functions, 9,366 translate into 44 C++
+chunks; that translation count does not mean every function is behaviorally
+verified.
 
 ## Performance and limitations
 
@@ -69,13 +71,14 @@ It retains the original meshes, textures, LOD and camera distances, while
 omitting live reflection cameras/overlays and reducing glow, speed blur and
 depth haze. Car paint and glass consequently look flatter.
 
-The latest completed short-race results in the committed reports measured
-**42.9 minimum / 51.85 median main-scene submissions per second** for build 51.
-Build 53 restores the original camera distances after an unsuccessful
-shorter-distance experiment and selects the original queue waits for a device
-comparison; its race result is pending in those reports. Scene submissions,
-simulation ticks and display presentations are separate measurements, so these
-figures are not a guarantee of a stable displayed frame rate.
+The latest completed short-race replay, build 52, measured **39.8 minimum / 51.25
+median / 60.9 maximum main-scene submissions per second** across 12 two-second
+intervals. Build 52 used a shorter camera distance; it did not improve the rate
+and has been dropped. Build 53 restores the original distance and selects the
+original queue waits for a device comparison, which is still pending. Raw reports
+are local and not included here. Scene submissions, simulation ticks and display
+presentations are separate measurements, so these figures do not guarantee a
+stable displayed frame rate.
 
 Additional limits:
 
@@ -91,10 +94,9 @@ Additional limits:
 
 Developer launch arguments `--live-reflections` and `--original-quality` restore
 live reflection materials and the fuller original effects respectively, at a
-performance cost. See [GPU status](docs/GPU_STATUS.md) for the measurements,
-quality tradeoffs and individual experiments. The
-[native development log](docs/NATIVE_STATUS.md) records implementation and
-validation history; earlier entries describe earlier builds.
+performance cost. [Graphics notes](docs/GPU_STATUS.md) explain the current
+quality tradeoffs and measurements. [iOS port notes](docs/NATIVE_STATUS.md)
+summarize the architecture, validation and known limits.
 
 ## Build and run
 
@@ -185,7 +187,7 @@ GPU-specific checks are documented in [GPU status](docs/GPU_STATUS.md#reproduce)
 | `native/tests/` | Runtime, host, controller and graphics regressions |
 | `native/upstream.json`, `native/gpu/dependencies.json` | Pinned source and graphics dependencies |
 | `scripts/`, `cmake/` | Preparation, translation, build and diagnostic tooling |
-| `docs/` | Detailed development history and validation evidence |
+| `docs/` | iOS architecture, graphics and validation notes |
 | `local/`, `build/` | Ignored game data, dependencies, captures, reports and generated builds |
 
 ## Credits and game content
@@ -205,3 +207,10 @@ provenance is documented in [iOS assets](native/ios/ASSETS.md).
 Burnout 3: Takedown is the original Criterion Games / Electronic Arts title.
 The game ISO, extracted executable, generated game code and signing credentials
 are not included in this repository.
+
+## License
+
+This repository does not currently grant a license to reuse its original code.
+The referenced upstream projects and bundled dependencies retain their own
+licenses and notices. A license for this repository's contributions has not
+been selected.

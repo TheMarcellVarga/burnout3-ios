@@ -1,6 +1,7 @@
 local/
 build/
 .DS_Store
+.vscode/
 __pycache__/
 *.iso
 *.7z
