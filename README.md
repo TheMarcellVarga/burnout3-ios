@@ -1,15 +1,29 @@
-# Burnout 3: Takedown — iOS native port
+# Burnout 3: Takedown for iOS
 
-An experimental native iOS port of **Burnout 3: Takedown**, built on the
-[burnout3-pc](https://github.com/danielgomesvieira2000/burnout3-pc) recompilation
-project. It brings the PlayStation 2 game to Apple ARM64 with GPU rendering,
-landscape touch controls, device audio and a persistent virtual memory card.
-Development and physical-device testing currently target the **iPhone 15 Pro Max**.
+An experimental native iOS port of **Burnout 3: Takedown**, inspired by
+[burnout3-pc](https://github.com/danielgomesvieira2000/burnout3-pc). This project
+targets the PlayStation 2 version and brings it to Apple ARM64 with GPU
+rendering, landscape touch controls, device audio and a persistent virtual
+memory card. Development and physical-device testing currently target the
+**iPhone 15 Pro Max**.
 
 **Status: a working proof of concept under active development.** The game boots,
 reaches its menus and runs recorded race tests on the phone. Performance and
 visual correctness are still being improved; full-game compatibility and a
 stable 50–60 FPS rate have not been established.
+
+## Why I started
+
+I wanted Burnout 3: Takedown on my iPhone. Seeing burnout3-pc made me want to
+explore what bringing it to iOS would involve: adapting the runtime for Apple
+Silicon, getting graphics onto the phone and making a controller-driven game
+usable through touch.
+
+The work in this repository focuses on that Apple adaptation and the experience
+around the game: the iOS app, ISO import, analog touch controls, audio, local
+saves and device performance. The current build also reuses pinned translation
+tools, PS2 runtime code and the Vulkan renderer from burnout3-pc; those components
+and their authors are credited below.
 
 ## How it works
 
@@ -18,14 +32,15 @@ into C++, then compile it ahead of time for ARM64. A native host supplies PS2
 runtime services, disc access, audio and graphics. Captured VU microprograms
 can also be compiled ahead of time, with interpreter fallback for unmatched code.
 
-Graphics use the upstream Vulkan renderer through **MoltenVK / Metal**, with
-direct Metal-backed presentation on iOS. UIKit provides the ISO import screen
-and touch controller, and AVAudioEngine handles sound. A software renderer is
-retained for reference and diagnosis.
+Graphics use burnout3-pc's Vulkan renderer through **MoltenVK / Metal**, with
+direct Metal-backed presentation on iOS. This repository adds the UIKit ISO
+import screen and touch controller, AVAudioEngine integration and persistent
+storage in the app sandbox. A software renderer is retained for reference and
+diagnosis.
 
-This follows the upstream recompilation architecture rather than rebuilding
-the game from scratch. It does not require emulator JIT activation, iLoader
-or a separate PS2 BIOS. The original game disc image is supplied separately.
+Ahead-of-time compilation means the app does not require emulator JIT
+activation, iLoader or a separate PS2 BIOS. The original game disc image is
+supplied separately.
 
 ## What works today
 
@@ -175,12 +190,17 @@ GPU-specific checks are documented in [GPU status](docs/GPU_STATUS.md#reproduce)
 
 ## Credits and game content
 
-This port builds on [burnout3-pc](https://github.com/danielgomesvieira2000/burnout3-pc)
-and its PS2 recompilation engine. Their MIT license and copyright notices remain
-in the prepared upstream checkouts. MoltenVK, glslang and the vendored
-Boost.Context assembly retain their respective license notices; Boost provenance
-is recorded in [its vendor directory](native/vendor/boost-context/README.md).
-Bundled artwork provenance is documented in [iOS assets](native/ios/ASSETS.md).
+[burnout3-pc](https://github.com/danielgomesvieira2000/burnout3-pc) inspired this
+project. Its translation tools, PS2 recompilation runtime and Vulkan renderer
+are also reused in the current implementation, with the revisions recorded in
+[`native/upstream.json`](native/upstream.json). Their MIT license and copyright
+notices remain in the prepared source checkouts. The Apple adapters, iOS app
+integration, touch interaction and device-specific work live in this repository.
+
+MoltenVK, glslang and the vendored Boost.Context assembly retain their respective
+license notices; Boost provenance is recorded in
+[its vendor directory](native/vendor/boost-context/README.md). Bundled artwork
+provenance is documented in [iOS assets](native/ios/ASSETS.md).
 
 Burnout 3: Takedown is the original Criterion Games / Electronic Arts title.
 The game ISO, extracted executable, generated game code and signing credentials
