@@ -3,11 +3,11 @@
 <plist version="1.0"><dict>
 <key>CFBundleExecutable</key><string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
 <key>CFBundleIdentifier</key><string>dev.burnout3.takedawn-ios</string>
-<key>CFBundleName</key><string>Burnout 3 Xbox</string>
-<key>CFBundleDisplayName</key><string>Burnout 3 Xbox</string>
+<key>CFBundleName</key><string>Burnout 3</string>
+<key>CFBundleDisplayName</key><string>Burnout 3</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>0.1</string>
-<key>CFBundleVersion</key><string>9</string>
+<key>CFBundleVersion</key><string>13</string>
 <key>LSRequiresIPhoneOS</key><true/>
 <key>UIApplicationSupportsIndirectInputEvents</key><true/>
 <key>UILaunchScreen</key><dict/>

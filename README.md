@@ -1,3 +1,22 @@
+# Burnout 3 iOS
+
+Our main iOS version on the [xbox-ios branch](https://github.com/TheMarcellVarga/burnout3-ios/tree/xbox-ios), adapted from [Takedawn](https://github.com/xenophobentx/takedawn),
+based on the **USA original Xbox** release of Burnout 3: Takedown.
+
+The app includes our native launch screen, persistent iOS settings, a verified
+game-folder importer and the original project icon. Its Xbox foundation remains
+credited to Takedawn and xboxrecomp. The ARM64 iOS app builds, signs and runs on
+an iPhone 15 Pro Max. A controlled
+Silver Lake race and profile save/reload passed; the short race sample measured
+59.9–60.1 Metal presentations per second. Visible rendering defects and untested
+audio/lifecycle behavior remain. This is a development prototype, not a finished
+iOS release. See [iOS setup and status](ios/README.md).
+
+The original Takedawn README follows. Its desktop/Android downloads, tested
+hardware and gameplay claims describe upstream Takedawn, not this iOS prototype.
+
+---
+
 <p align="center">
   <img src="assets/icon/takedawn.svg" alt="The Takedawn icon: a crimson letter T on a navy panel" width="128">
 </p>
