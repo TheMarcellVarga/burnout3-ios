@@ -3,8 +3,8 @@
 <plist version="1.0"><dict>
     <key>CFBundleExecutable</key><string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
     <key>CFBundleIdentifier</key><string>dev.burnout3.nativeprobe</string>
-    <key>CFBundleName</key><string>Burnout 3</string>
-    <key>CFBundleDisplayName</key><string>Burnout 3</string>
+    <key>CFBundleName</key><string>Burnout 3 PS2</string>
+    <key>CFBundleDisplayName</key><string>Burnout 3 PS2</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
     <key>CFBundleVersion</key><string>55</string>

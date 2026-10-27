@@ -1,5 +1,8 @@
 # Burnout 3: Takedown for iOS
 
+This branch preserves the older **PS2-based version**. Our main iOS app now
+uses the Xbox-based runtime on the [xbox-ios branch](https://github.com/TheMarcellVarga/burnout3-ios/tree/xbox-ios).
+Only the Xbox app is kept installed; the PS2 source remains here for reference.
 
 An experimental native iOS port of **Burnout 3: Takedown**, inspired by
 [burnout3-pc](https://github.com/danielgomesvieira2000/burnout3-pc). This project
