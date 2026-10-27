@@ -1,0 +1,522 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7f85ba0..2479914 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -13,6 +13,10 @@ project(xboxrecomp VERSION 0.9.0 LANGUAGES C)
+ #   xbox_apu       - MCPX APU audio emulation (extracted from xemu)
+ #   xbox_nv2a      - NV2A GPU emulation (extracted from xemu)
+ 
++if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    add_compile_definitions(XBOXRECOMP_IOS=1)
++endif()
++
+ set(CMAKE_C_STANDARD 11)
+ set(CMAKE_C_STANDARD_REQUIRED ON)
+ 
+diff --git a/src/d3d/CMakeLists.txt b/src/d3d/CMakeLists.txt
+index 1f0214c..8c18e10 100644
+--- a/src/d3d/CMakeLists.txt
++++ b/src/d3d/CMakeLists.txt
+@@ -58,10 +58,9 @@ else()
+         nv2a_pcache_psdef.c
+     )
+     find_package(SDL2 REQUIRED)
+-    if(WIN32 OR ANDROID)
+-        # Windows + Vulkan, and Android: no OpenGL layer (d3d8_gl.c is desktop
+-        # OpenGL 3.3 through libepoxy); the pushbuffer executor draws through
+-        # nv2a_pb_vulkan.c alone.
++    if(WIN32 OR ANDROID OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
++        # No desktop OpenGL layer on Windows + Vulkan, Android or iOS.
++        # The pushbuffer executor uses Vulkan on the first two and Metal on iOS.
+         target_link_libraries(xbox_d3d8 PUBLIC platform SDL2::SDL2)
+     else()
+         find_package(PkgConfig REQUIRED)
+diff --git a/src/d3d/nv2a_pb_metal.m b/src/d3d/nv2a_pb_metal.m
+index d0f38d6..4fb3147 100644
+--- a/src/d3d/nv2a_pb_metal.m
++++ b/src/d3d/nv2a_pb_metal.m
+@@ -62,6 +62,12 @@
+  * Off macOS this file compiles to nothing.
+  */
+ #if defined(__APPLE__)
++#include <TargetConditionals.h>
++#if TARGET_OS_IPHONE
++#define XR_CPU_TEXTURE_STORAGE MTLStorageModeShared
++#else
++#define XR_CPU_TEXTURE_STORAGE (s_unified ? MTLStorageModeShared : MTLStorageModeManaged)
++#endif
+ 
+ #import <Foundation/Foundation.h>
+ #import <Metal/Metal.h>
+@@ -965,7 +971,7 @@ static void rt_free(RenderTarget *rt)
+     /* Managed only for a discrete GPU (Intel Macs); deprecated on 27. */
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+-    td.storageMode = s_unified ? MTLStorageModeShared : MTLStorageModeManaged;
++    td.storageMode = XR_CPU_TEXTURE_STORAGE;
+ #pragma clang diagnostic pop
+     return [s_dev newTextureWithDescriptor:td];
+ }
+@@ -3019,10 +3025,12 @@ static void pc_warm_one(size_t i, int pass)
+         }
+         /* The compiler service's full width while the pre-warm runs (WWDC23
+          * 10127, "Optimize GPU renderers with Metal"); back to balanced after. */
++#if !TARGET_OS_IPHONE
+         if (@available(macOS 13.3, *)) {
+             if (n && s_dev.maximumConcurrentCompilationTaskCount)
+                 s_dev.shouldMaximizeConcurrentCompilation = YES;
+         }
++#endif
+         for (pass = 0; pass < 3; pass++) {
+             dispatch_apply(n, q, ^(size_t k) {
+                 @autoreleasepool {
+@@ -3035,8 +3043,10 @@ static void pc_warm_one(size_t i, int pass)
+         s_pc_warm_ns += pc_now() - t;
+         nv2a_pcache_stat_warm_ms((uint32_t)((pc_now() - t) / 1000000ull));
+         nv2a_pcache_stat_hold(s_pc_total, s_pc_total, s_pc_cold);
++#if !TARGET_OS_IPHONE
+         if (@available(macOS 13.3, *))
+             s_dev.shouldMaximizeConcurrentCompilation = NO;
++#endif
+         fprintf(stderr, LOGP "pcache: pre-warmed %llu vs, %llu fs, %llu pipelines of %u/%u/%u"
+                 " on disk in %.0f ms (done at %.2f s)\n",
+                 (unsigned long long)(s_pc_warm[PC_VS] - before[PC_VS]),
+@@ -4124,7 +4134,9 @@ static void rt_managed_sync(RenderTarget *rt)
+     b = [s_cmd blitCommandEncoder];
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
++#if !TARGET_OS_IPHONE
+     [b synchronizeResource:rt->tex];
++#endif
+ #pragma clang diagnostic pop
+     [b endEncoding];
+ }
+diff --git a/src/kernel/CMakeLists.txt b/src/kernel/CMakeLists.txt
+index 6989a3f..bd451e6 100644
+--- a/src/kernel/CMakeLists.txt
++++ b/src/kernel/CMakeLists.txt
+@@ -74,9 +74,8 @@ if(WIN32)
+     # include path that "platform/xbox_winnt.h" resolves against.
+     # advapi32: the registry (xbox_report.c reads the OS and CPU names).
+     target_link_libraries(xbox_kernel PUBLIC platform kernel32 bcrypt advapi32)
+-elseif(ANDROID)
+-    # Android: the platform layer alone. The crypto exports (kernel_crypto.c)
+-    # are portable C, and the NDK has no OpenSSL to link.
++elseif(ANDROID OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    # Mobile: crypto exports are portable C; no desktop OpenSSL is needed.
+     target_link_libraries(xbox_kernel PUBLIC platform)
+ else()
+     # Linux: platform layer (POSIX host primitives) + OpenSSL for crypto.
+diff --git a/src/kernel/kernel_path.c b/src/kernel/kernel_path.c
+index ccda5dc..2ec5993 100644
+--- a/src/kernel/kernel_path.c
++++ b/src/kernel/kernel_path.c
+@@ -748,12 +748,12 @@ void xbox_path_init(const char* game_dir, const char* save_dir)
+              s_game_dir, s_save_dir, s_user_dir);
+ }
+ 
+-#if !defined(__APPLE__)
++#if !defined(__APPLE__) || defined(XBOXRECOMP_IOS)
+ #include <dirent.h>
+ #include <strings.h>
+ /* Xbox file names are case-insensitive (FATX, and the DVD's XDVDFS lookups),
+  * and titles ask for "D:\Sound\DSP\B3XboxFx.bin" where the dumped disc
+- * has sound/DSP. macOS volumes fold case by default; Linux ones do not, so
++ * has sound/DSP. macOS volumes fold case by default; Linux and iOS volumes do not, so
+  * from `from` (the part after the existing base directory) each component
+  * that does not exist as written takes the spelling a directory entry has,
+  * compared without case. A component nothing matches stays as written (a
+@@ -876,7 +876,7 @@ translate:
+             while (n > 1 && host_path_buf[n - 1] == '/')
+                 host_path_buf[--n] = '\0';
+         }
+-#if !defined(__APPLE__)
++#if !defined(__APPLE__) || defined(XBOXRECOMP_IOS)
+         fold_case(host_path_buf, strlen(base_dir) + (sub_dir ? strlen(sub_dir) : 0));
+ #endif
+ 
+diff --git a/src/kernel/xbox_memory_layout.c b/src/kernel/xbox_memory_layout.c
+index ffb4b51..25ed5cc 100644
+--- a/src/kernel/xbox_memory_layout.c
++++ b/src/kernel/xbox_memory_layout.c
+@@ -3778,7 +3778,10 @@ BOOL xbox_MemoryLayoutInit(const void *xbe_data, size_t xbe_size)
+         s_pb_exec = recomp_env(RENV_PB_EXEC) != NULL;
+         s_nv2a_trace = recomp_env(RENV_NV2A_TRACE) != NULL
+                     || recomp_env(RENV_PB_SCAN) != NULL
+-                    || recomp_env(RENV_PB_EXEC) != NULL;
++#if !defined(XBOXRECOMP_IOS)
++                    || recomp_env(RENV_PB_EXEC) != NULL
++#endif
++                    ;
+         if (g_nv2a_memory) {
+             fprintf(stderr, "  NV2A register aperture: %u MB at Xbox VA "
+                     "0x%08X (zeroed, no register semantics)\n",
+diff --git a/src/platform/recomp_restart.c b/src/platform/recomp_restart.c
+index de8c108..67ffa50 100644
+--- a/src/platform/recomp_restart.c
++++ b/src/platform/recomp_restart.c
+@@ -55,7 +55,7 @@ static char **dup_vec(char **v, int n)
+     return d;
+ }
+ 
+-#if !defined(_WIN32) && !defined(__ANDROID__)
++#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(XBOXRECOMP_IOS)
+ /* The executable itself: argv[0] may be a bare name found on PATH. */
+ static const char *exe_path(void)
+ {
+@@ -75,7 +75,7 @@ static const char *exe_path(void)
+ }
+ #endif
+ 
+-#if !defined(_WIN32) && !defined(__ANDROID__)
++#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(XBOXRECOMP_IOS)
+ /* An AppImage (Linux): the program runs from the image's mount
+  * (/tmp/.mount_XXX/usr/bin/...), which the image's runtime keeps only while
+  * the process it started lives on unchanged. After an exec of the program
+@@ -222,7 +222,7 @@ static void restart_at_exit(void)
+         free(env);
+         free(cmd);
+     }
+-#elif !defined(__ANDROID__)
++#elif !defined(__ANDROID__) && !defined(XBOXRECOMP_IOS)
+     {
+         int fd, max = (int)sysconf(_SC_OPEN_MAX);
+         const char *exe = exe_path();
+@@ -305,7 +305,7 @@ void recomp_restart_init(int argc, char **argv)
+ #endif
+     if (!s_argv || !s_envp)
+         return;
+-#if !defined(_WIN32) && !defined(__ANDROID__)
++#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(XBOXRECOMP_IOS)
+     plan_appimage();
+ #endif
+     s_ready = 1;
+@@ -374,7 +374,7 @@ void recomp_quit_request(const char *why)
+ 
+ void recomp_restart_target(const char **exe, char ***argv, char ***envp)
+ {
+-#if !defined(_WIN32) && !defined(__ANDROID__)
++#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(XBOXRECOMP_IOS)
+     if (exe) *exe = s_exe ? s_exe : exe_path();
+     if (argv) *argv = s_exe ? s_exec_argv : s_argv;
+     if (envp) *envp = s_exe ? s_exec_envp : s_envp;
+diff --git a/src/platform/win32_compat.c b/src/platform/win32_compat.c
+index b53b93b..daea76c 100644
+--- a/src/platform/win32_compat.c
++++ b/src/platform/win32_compat.c
+@@ -40,7 +40,12 @@
+ #include <sys/sysctl.h>
+ #include <sys/stat.h>
+ #include <mach/mach.h>
++#if defined(XBOXRECOMP_IOS)
++#include <mach/vm_map.h>
++#define mach_vm_map vm_map
++#else
+ #include <mach/mach_vm.h>
++#endif
+ #else
+ #include <sys/sysinfo.h>
+ #endif
+@@ -2231,7 +2236,21 @@ size_t view_take(const void *addr)
+  * memfd_create for this; elsewhere an immediately-unlinked temp file does. */
+ static int anon_map_fd(const char *name)
+ {
+-#if defined(__APPLE__)
++#if defined(XBOXRECOMP_IOS)
++    /* iOS sandboxes do not allow arbitrary POSIX shared-memory names. A
++     * private, immediately unlinked file still supports aliasing mmap views. */
++    const char *tmp = getenv("TMPDIR");
++    char path[1024];
++    (void)name;
++    if (!tmp || !*tmp) { errno = ENOENT; return -1; }
++    if (snprintf(path, sizeof path, "%s/xbox-map-XXXXXX", tmp) >= (int)sizeof path) {
++        errno = ENAMETOOLONG;
++        return -1;
++    }
++    int fd = mkstemp(path);
++    if (fd >= 0) unlink(path);
++    return fd;
++#elif defined(__APPLE__)
+     static volatile LONG map_counter = 0;
+     /* The pid keeps two instances apart: with a bare counter, both open
+      * "/xbox_map_1" and the second O_EXCL loses. macOS caps the name at 31. */
+@@ -2255,7 +2274,7 @@ HANDLE CreateFileMappingA(HANDLE file, LPSECURITY_ATTRIBUTES sa, DWORD protect,
+     if (size == 0) { SetLastError(ERROR_INVALID_PARAMETER); return NULL; }
+ 
+     int fd = anon_map_fd(name);
+-    if (fd < 0) { SetLastError(ERROR_NOT_ENOUGH_MEMORY); return NULL; }
++    if (fd < 0) { fprintf(stderr, "[MEMORY] backing file failed: %s\n", strerror(errno)); SetLastError(ERROR_NOT_ENOUGH_MEMORY); return NULL; }
+     if (ftruncate(fd, (off_t)size) != 0) {
+         close(fd);
+         SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+diff --git a/src/video/CMakeLists.txt b/src/video/CMakeLists.txt
+index bf40656..5d579f7 100644
+--- a/src/video/CMakeLists.txt
++++ b/src/video/CMakeLists.txt
+@@ -50,7 +50,12 @@ else()
+         target_sources(xbox_video PRIVATE fb_present_metal.m host_probe_metal.m)
+         target_link_libraries(xbox_video PUBLIC
+             "-framework Metal" "-framework QuartzCore" "-framework CoreGraphics"
+-            "-framework Foundation" "-framework CoreVideo" "-framework AppKit")
++            "-framework Foundation" "-framework CoreVideo")
++        if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++            target_link_libraries(xbox_video PUBLIC "-framework UIKit")
++        else()
++            target_link_libraries(xbox_video PUBLIC "-framework AppKit")
++        endif()
+     endif()
+ endif()
+ target_include_directories(xbox_video PUBLIC
+diff --git a/src/video/fb_present_metal.m b/src/video/fb_present_metal.m
+index 8cdd1c6..157eee7 100644
+--- a/src/video/fb_present_metal.m
++++ b/src/video/fb_present_metal.m
+@@ -27,7 +27,12 @@
+  */
+ #if defined(__APPLE__)
+ 
++#include <TargetConditionals.h>
++#if TARGET_OS_IPHONE
++#import <UIKit/UIKit.h>
++#else
+ #import <AppKit/AppKit.h>
++#endif
+ #import <CoreVideo/CoreVideo.h>
+ #import <Foundation/Foundation.h>
+ #import <Metal/Metal.h>
+@@ -63,6 +68,12 @@
+ #include <stdatomic.h>
+ #include "../platform/xr_log.h"   /* the print gate (also force-included) */
+ 
++#if TARGET_OS_IPHONE
++#define XR_CPU_TEXTURE_STORAGE MTLStorageModeShared
++#else
++#define XR_CPU_TEXTURE_STORAGE (s_unified ? MTLStorageModeShared : MTLStorageModeManaged)
++#endif
++
+ #if __has_feature(objc_arc)
+ #error "fb_present_metal.m is manual retain/release: build it without -fobjc-arc"
+ #endif
+@@ -111,7 +122,11 @@
+  * pacing=all: each drawable's presentedTime, the time it reached the screen,
+  * is logged as a host present. Both are mach_absolute_time stamps, moved
+  * onto xbox_HostNowNs's clock by the offset between the two read now. */
++#if TARGET_OS_IPHONE
++static CADisplayLink *s_link;
++#else
+ static CVDisplayLinkRef s_link;
++#endif
+ static int s_trace_presented;
+ 
+ static uint64_t mach_to_host_ns(uint64_t mach_ns)
+@@ -132,6 +147,30 @@ static uint64_t mach_ticks_ns(uint64_t ticks)
+     return ticks * tb.numer / tb.denom;
+ }
+ 
++#if TARGET_OS_IPHONE
++@interface TakedawnDisplayClock : NSObject
+++ (void)tick:(CADisplayLink *)link;
++@end
++@implementation TakedawnDisplayClock
+++ (void)tick:(CADisplayLink *)link {
++    uint64_t period = (uint64_t)((link.targetTimestamp - link.timestamp) * 1e9);
++    xbox_VblankDisplayRefresh(mach_to_host_ns((uint64_t)(link.targetTimestamp * 1e9)), period);
++}
++@end
++void fbm_vblank_link(SDL_Window *win) {
++    (void)win;
++    if (s_link) return;
++    s_link = [[CADisplayLink displayLinkWithTarget:[TakedawnDisplayClock class]
++                                       selector:@selector(tick:)] retain];
++    s_link.preferredFramesPerSecond = 60;
++    [s_link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
++}
++static void stop_display_link(void) {
++    [s_link invalidate];
++    [s_link release];
++    s_link = nil;
++}
++#else
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ static CVReturn link_cb(CVDisplayLinkRef link, const CVTimeStamp *now,
+@@ -180,6 +219,15 @@ void fbm_vblank_link(SDL_Window *win)
+ }
+ #pragma clang diagnostic pop
+ 
++static void stop_display_link(void) {
++    if (s_link) {
++        CVDisplayLinkStop(s_link);
++        CVDisplayLinkRelease(s_link);
++        s_link = NULL;
++    }
++}
++#endif
++
+ /* ---- present timing (present_cadence.h, BO-115) ----------------------------
+  *
+  * display.present_timing = legacy: the layer has two drawables, a frame is
+@@ -235,6 +283,15 @@ static CFTimeInterval host_ns_to_mach_s(uint64_t host_ns)
+ /* The display the window is on: its rate, and whether it is variable. */
+ static void display_probe(SDL_Window *win, pc_display *d, char *name, size_t namen, int *fs)
+ {
++#if TARGET_OS_IPHONE
++    memset(d, 0, sizeof *d);
++    d->builtin = 1;
++    d->refresh_hz = 60; /* prototype requests 60 Hz from CADisplayLink and SDL */
++    d->min_hz = 60;
++    if (name && namen) snprintf(name, namen, "iPhone display");
++    if (fs) *fs = 1;
++    (void)win;
++#else
+     NSScreen *scr = nil;
+     NSNumber *num;
+     CGDirectDisplayID id;
+@@ -278,6 +335,7 @@ static void display_probe(SDL_Window *win, pc_display *d, char *name, size_t nam
+     }
+     if (fs)
+         *fs = win && (SDL_GetWindowFlags(win) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
++#endif
+ }
+ 
+ /* 1 while some part of the window can be seen (not covered by other
+@@ -285,11 +343,16 @@ static void display_probe(SDL_Window *win, pc_display *d, char *name, size_t nam
+  * and report when. */
+ int fbm_visible(SDL_Window *win)
+ {
++#if TARGET_OS_IPHONE
++    (void)win;
++    return [UIApplication sharedApplication].applicationState == UIApplicationStateActive;
++#else
+     SDL_SysWMinfo wm;
+     SDL_VERSION(&wm.version);
+     if (win && SDL_GetWindowWMInfo(win, &wm) && wm.subsystem == SDL_SYSWM_COCOA)
+         return ([wm.info.cocoa.window occlusionState] & NSWindowOcclusionStateVisible) != 0;
+     return 1;
++#endif
+ }
+ 
+ static void timing_status(void)
+@@ -365,10 +428,8 @@ static void timing_poll(SDL_Window *win)
+     if (strategy == PC_LOCK && s_link) {
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+-        CVDisplayLinkStop(s_link);
+-        CVDisplayLinkRelease(s_link);
++        stop_display_link();
+ #pragma clang diagnostic pop
+-        s_link = NULL;
+     }
+     if (strategy != PC_LEGACY || !s_link)
+         xbox_VblankDisplayLockAuto(strategy == PC_LOCK);
+@@ -574,6 +635,10 @@ static void glass_note(uint32_t flip, uint64_t vblank_ns, uint64_t commit_ns,
+  * white it can go at most and now (EDR headroom; 1.0 none). */
+ static void hdr_display(SDL_Window *win)
+ {
++#if TARGET_OS_IPHONE
++    (void)win;
++    nv2a_host_hdr_display(1.0f, 1.0f); /* SDR for the initial phone prototype */
++#else
+     NSScreen *scr = [NSScreen mainScreen];
+     SDL_SysWMinfo wm;
+     float pot = 1.0f, now = 1.0f;
+@@ -586,6 +651,7 @@ static void hdr_display(SDL_Window *win)
+         now = (float)scr.maximumExtendedDynamicRangeColorComponentValue;
+     }
+     nv2a_host_hdr_display(pot, now);
++#endif
+ }
+ 
+ /* BO-110: the layer EDR (RGBA16Float, extended sRGB: the encoding the
+@@ -752,7 +818,9 @@ int fbm_create(SDL_Window *win, int vsync, int shots, char *err, size_t errn)
+         nv2a_host_set_hdr_patch_fn(hdr_patch);
+         hdr_layer(nv2a_host_hdr_active());
+         s_layer.framebufferOnly = shots ? NO : YES;
++#if !TARGET_OS_IPHONE
+         s_layer.displaySyncEnabled = vsync ? YES : NO;
++#endif
+         /* Two drawables: at most one frame queued ahead of the display
+          * (the BO-74 latency measurement's recommendation, with display
+          * sync on). RECOMP_PRESENT_DRAWABLES=3 gives one more of slack. */
+@@ -767,12 +835,14 @@ int fbm_create(SDL_Window *win, int vsync, int shots, char *err, size_t errn)
+         SDL_Metal_GetDrawableSize(win, &w, &h);
+         if (w > 0 && h > 0)
+             s_layer.drawableSize = CGSizeMake(w, h);
++#if !TARGET_OS_IPHONE
+         if (recomp_env_on(RENV_WINDOW_FLOAT)) {
+             SDL_SysWMinfo wm;
+             SDL_VERSION(&wm.version);
+             if (SDL_GetWindowWMInfo(win, &wm) && wm.subsystem == SDL_SYSWM_COCOA)
+                 [wm.info.cocoa.window setLevel:NSFloatingWindowLevel];
+         }
++#endif
+         if (xbox_VblankDisplayLockOn())
+             fbm_vblank_link(win);
+         {
+@@ -789,9 +859,7 @@ void fbm_destroy(void)
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+     if (s_link) {
+-        CVDisplayLinkStop(s_link);
+-        CVDisplayLinkRelease(s_link);
+-        s_link = NULL;
++        stop_display_link();
+     }
+ #pragma clang diagnostic pop
+     @autoreleasepool {
+@@ -859,7 +927,7 @@ void fbm_get(void **device, void **queue)
+              * Managed on a discrete GPU, as the backend's targets. */
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+-            td.storageMode = s_unified ? MTLStorageModeShared : MTLStorageModeManaged;
++            td.storageMode = XR_CPU_TEXTURE_STORAGE;
+ #pragma clang diagnostic pop
+             [s_slot[k] release];
+             s_slot[k] = [s_dev newTextureWithDescriptor:td];
+@@ -883,7 +951,7 @@ void fbm_get(void **device, void **queue)
+             td.usage = MTLTextureUsageShaderRead;
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+-            td.storageMode = s_unified ? MTLStorageModeShared : MTLStorageModeManaged;
++            td.storageMode = XR_CPU_TEXTURE_STORAGE;
+ #pragma clang diagnostic pop
+             [s_scene[k] release];
+             s_scene[k] = [s_dev newTextureWithDescriptor:td];
+diff --git a/src/video/host_probe_metal.m b/src/video/host_probe_metal.m
+index a989bc7..c0fd7ae 100644
+--- a/src/video/host_probe_metal.m
++++ b/src/video/host_probe_metal.m
+@@ -3,6 +3,7 @@
+  * system.txt (host_probe.c). Asks Metal for its device list; makes nothing.
+  * Manual retain/release, as the rest of this target.
+  */
++#include <TargetConditionals.h>
+ #import <Metal/Metal.h>
+ #import <Foundation/Foundation.h>
+ 
+@@ -11,7 +12,13 @@
+ void xbox_host_probe_metal(xbox_report_buf *b)
+ {
+     @autoreleasepool {
++#if TARGET_OS_IPHONE
++        id<MTLDevice> device = MTLCreateSystemDefaultDevice();
++        NSArray<id<MTLDevice>> *devs = device ? [[NSArray alloc] initWithObjects:device, nil] : [[NSArray alloc] init];
++        [device release];
++#else
+         NSArray<id<MTLDevice>> *devs = MTLCopyAllDevices();
++#endif
+         NSUInteger i;
+ 
+         for (i = 0; i < devs.count; i++) {
+@@ -22,7 +29,11 @@ void xbox_host_probe_metal(xbox_report_buf *b)
+             xbox_report_printf(b, "gpu %lu: %s (%s%s%s), %s, working set %llu MiB\n",
+                                (unsigned long)i, d.name.UTF8String,
+                                d.hasUnifiedMemory ? "unified memory" : "discrete memory",
++#if TARGET_OS_IPHONE
++                               "", "",
++#else
+                                d.isLowPower ? ", low power" : "", d.isRemovable ? ", external" : "",
++#endif
+                                family, (unsigned long long)(d.recommendedMaxWorkingSetSize >> 20));
+         }
+         if (!devs.count)

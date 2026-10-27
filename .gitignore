@@ -71,3 +71,6 @@ tools/headless/local.env
 # Release pipeline (tools/release/): artefacts, and the per-machine settings
 dist/
 tools/release/local.env
+
+# iOS prototype dependencies and device captures
+/local/

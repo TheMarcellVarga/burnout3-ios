@@ -8,6 +8,10 @@ project(burnout3_recomp C)
 # carried hand-written menus and render paths, and the goal now is the title's
 # own boot sequence on the toolkit every other Xbox recomp uses.
 
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    add_compile_definitions(XBOXRECOMP_IOS=1)
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
@@ -61,7 +65,7 @@ set(XBOXRECOMP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../xboxrecomp" CACHE PATH "Path 
 # Off Windows the kernel links OpenSSL::Crypto but finds it in its own
 # subdirectory, where the imported target is invisible to the executable;
 # finding it here first puts it in scope for both (as blinx2-recomp does).
-if(NOT WIN32 AND NOT ANDROID)
+if(NOT WIN32 AND NOT ANDROID AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
     find_package(OpenSSL REQUIRED)
 endif()
 

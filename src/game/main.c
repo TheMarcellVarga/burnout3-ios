@@ -99,7 +99,7 @@ extern void xbox_InputPanicStop(int wait_ms);
 /* The shader pre-build (BO-93): on the backends that keep a key list, Metal
  * and Vulkan, and so not in the old Direct3D 11 Windows host. */
 #if defined(RECOMP_ENV_HAVE_ENHANCE_KEYS) && (defined(__APPLE__) || defined(XBOXRECOMP_HAVE_VULKAN)) \
-    && (!defined(_WIN32) || defined(XBOXRECOMP_WIN_VULKAN)) && !defined(__ANDROID__)
+    && (!defined(_WIN32) || defined(XBOXRECOMP_WIN_VULKAN)) && !defined(__ANDROID__) && !defined(XBOXRECOMP_IOS)
 #define BO3_HAVE_SHADERBUILD 1
 #include "shaderbuild.h"
 #endif
@@ -1896,8 +1896,12 @@ static int host_main(void)
     /* BO-114: the host mixer's buses, wave table and preset file. Names
      * only unless audio.mixer (RECOMP_AUDIO_MIXER) is on. */
     {
+#ifdef XBOXRECOMP_HAVE_OVERLAY
         extern const char *xbox_SettingsPath(void);
         bo3_mixer_init(BO3_GAME_DIR, xbox_SettingsPath(), s_save_dir);
+#else
+        bo3_mixer_init(BO3_GAME_DIR, "", s_save_dir);
+#endif
     }
     bo3_dsound_notify_init();           /* BO-173: the done-list guard */
     xbox_kernel_bridge_init();
@@ -3002,7 +3006,7 @@ int main(int argc, char **argv)
         const char *repo = getenv("TAKEDAWN_UPDATE_REPO");
         xbox_OverlaySetUpdateCheck(repo && repo[0] ? repo : "xenophobentx/takedawn", bo3_version_number());
     }
-#if defined(__linux__) && !defined(__ANDROID__)
+#if defined(__linux__) && !defined(__ANDROID__) && !defined(XBOXRECOMP_IOS)
     /* "Add Steam library art" (BO-143): for a player who updated and never sees
      * the setup window's Add to Steam step. Only where the setup program is. */
     if (bo3_steam_art_available())
@@ -3317,6 +3321,11 @@ int main(int argc, char **argv)
 #endif
 #ifdef XBOXRECOMP_HAVE_OVERLAY
     xbox_SettingsFinish();              /* the last default is in */
+#else
+    /* Save-directory setup can snapshot the environment before the game's
+     * defaults are set. Without the desktop overlay, refresh it here too:
+     * otherwise VBLANK is absent and D3D waits forever at its first mode set. */
+    recomp_env_reload();
 #endif
     bo3_pcache_manifest_register(s_xbe_path);  /* BO-208: the shipped shader coverage list */
     host_enhance_init();

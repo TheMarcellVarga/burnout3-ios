@@ -1,0 +1,25 @@
+--- a/src/video/uikit/SDL_uikitwindow.m
++++ b/src/video/uikit/SDL_uikitwindow.m
+@@ -207,7 +207,21 @@
+ 
+         /* ignore the size user requested, and make a fullscreen window */
+         /* !!! FIXME: can we have a smaller view? */
+-        uiwindow = [[SDL_uikitwindow alloc] initWithFrame:data.uiscreen.bounds];
++        /* Takedawn iOS: attach SDL's window to the connected UIKit scene.
++         * The app delays SDL_main until its single scene has connected. */
++        UIWindowScene *windowScene = nil;
++        for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
++            if ([scene isKindOfClass:[UIWindowScene class]] &&
++                    ((UIWindowScene *)scene).screen == data.uiscreen) {
++                windowScene = (UIWindowScene *)scene;
++                break;
++            }
++        }
++        if (!windowScene) {
++            return SDL_SetError("No connected UIWindowScene for SDL display");
++        }
++        uiwindow = [[SDL_uikitwindow alloc] initWithWindowScene:windowScene];
++        uiwindow.frame = windowScene.coordinateSpace.bounds;
+ 
+         /* put the window on an external display if appropriate. */
+         if (data.uiscreen != [UIScreen mainScreen]) {

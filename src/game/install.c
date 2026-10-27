@@ -486,7 +486,7 @@ extern void xbox_InputShutdown(void);    /* toolkit, src/input/input_core.c */
  * the game again. Returns only when it could not be started. */
 static void setup_open(const char *root, int named)
 {
-#if !defined(_WIN32) && !defined(__ANDROID__)
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(XBOXRECOMP_IOS)
     char prog[1100];
     const char *self = recomp_exe_path();
     char *args[8];
@@ -640,7 +640,7 @@ static const char *own_command(void)
     static char buf[1100];
     const char *p = NULL;
 
-#if !defined(_WIN32) && !defined(__ANDROID__)
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(XBOXRECOMP_IOS)
     p = getenv("APPIMAGE");
 #endif
     if (!p || !*p)
