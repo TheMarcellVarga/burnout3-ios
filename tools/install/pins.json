@@ -1,0 +1,32 @@
+{
+  "llvm-mingw": {
+    "url": "https://github.com/mstorsjo/llvm-mingw/releases/download/20260922/llvm-mingw-20260922-ucrt-x86_64.zip",
+    "sha256": "e3ad77d117a4bea19a7a3b333341824d79a5a371004a10e25b8504e7b3047666",
+    "size": 190725905
+  },
+  "cmake": {
+    "url": "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-windows-x86_64.zip",
+    "sha256": "d163cd3ab4959b0a53fa8988f2ddbd2e6c501658201e6a154386bad9dbe4f836",
+    "size": 46473549
+  },
+  "ninja": {
+    "url": "https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip",
+    "sha256": "f550fec705b6d6ff58f2db3c374c2277a37691678d6aba463adcbb129108467a",
+    "size": 275425
+  },
+  "sdl2": {
+    "url": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-devel-2.32.10-mingw.tar.gz",
+    "sha256": "83a5d74012311edc3c0d40ea6faecbe57ad692aa033fa5dc273cc937e3938ff2",
+    "size": 13892870
+  },
+  "vulkan-headers": {
+    "url": "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/vulkan-sdk-1.4.363.0.tar.gz",
+    "sha256": "4a078be12bef21cfebc09d878b77a63cff9d68f899254a0b00d0e37ef73e7f7e",
+    "size": 3416321
+  },
+  "glslang": {
+    "url": "https://github.com/KhronosGroup/glslang/archive/refs/tags/16.6.0.tar.gz",
+    "sha256": "9c09b901149c729df745057dafa815278aaa101b84d2b6e14f16a42de52f97f2",
+    "size": 4632787
+  }
+}

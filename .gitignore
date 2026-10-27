@@ -1,9 +1,76 @@
-local/
-build/
-.DS_Store
-.vscode/
-__pycache__/
+# Your game data: the unpacked disc. Never committed.
+Burnout 3 Takedown/
+# ... or the symlink the installer (or a worktree) makes to it
+/Burnout 3 Takedown
 *.iso
-*.7z
-*.elf
-*.ipa
+*.xiso
+
+# Generated from default.xbe by regen.sh. Never committed: the tool ships,
+# the output doesn't.
+src/game/recomp/gen/
+src/game/recomp/gen.*/
+
+# Build output (regen.sh's analysis lands in build/xr)
+build/
+build-xr/
+build-mingw/
+out/
+bin/
+*.obj
+*.exe
+*.dll
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.idb
+
+# Runtime state and captures: emulated HDD, frame dumps, logs
+saves/
+runs/
+*.bmp
+*.log
+setup.log
+
+# Made by Setup.cmd
+Play Burnout 3.cmd
+
+# Local-only
+_local/
+CLAUDE.md
+.claude/
+.mcp.json
+REPO_RULES.md
+
+# Editors, Python, OS
+.vs/
+*.suo
+*.user
+.idea/
+__pycache__/
+*.pyc
+.venv/
+/.venv
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.tmp
+*.bak
+
+# Windows cross build (cmake/llvm-mingw-x86_64.cmake)
+build-win*/
+
+# Android build (tools/android/build-apk.sh); the APK itself lands in out/
+build-android/
+*.apk
+*.keystore
+
+# Per-machine settings (Deck address etc.), never committed
+tools/headless/local.env
+
+# Release pipeline (tools/release/): artefacts, and the per-machine settings
+dist/
+tools/release/local.env
+
+# iOS prototype dependencies and device captures
+/local/

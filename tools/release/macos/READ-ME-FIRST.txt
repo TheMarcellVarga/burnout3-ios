@@ -1,0 +1,42 @@
+Takedawn @VERSION@ for macOS (Apple silicon)
+
+1. Drag Takedawn onto the Applications folder.
+
+2. The first time you open it, macOS stops it: Takedawn is not signed with
+   an Apple developer certificate and is not notarised. To allow it:
+
+     - open Takedawn once (macOS says it cannot be opened), choose Done;
+     - open System Settings > Privacy & Security, scroll down to
+       "Takedawn was blocked", choose Open Anyway and confirm.
+
+   On macOS 14 and earlier: right-click (or Control-click) Takedawn in
+   Applications, choose Open, then Open again.
+
+   Or, in Terminal:   xattr -dr com.apple.quarantine /Applications/Takedawn.app
+
+   You do this once.
+
+3. Takedawn needs the game's data from your own disc: a disc image
+   (.iso / .xiso) or an extracted disc folder of Burnout 3: Takedown,
+   NTSC-U (North America). It checks every file and copies them to
+   ~/Library/Application Support/Takedawn/Game. Without the setup window,
+   from Terminal:
+
+     /Applications/Takedawn.app/Contents/MacOS/Takedawn --install <image-or-folder>
+
+Saves and settings are in ~/Library/Application Support/Takedawn, the shader
+cache in ~/Library/Caches/Takedawn.
+
+How to update
+  1. Quit Takedawn.
+  2. Open the new disk image and drag Takedawn onto the Applications folder;
+     when Finder asks, choose Replace.
+  3. The new copy is not signed either, so macOS blocks it once more: repeat
+     step 2 above (Open Anyway in Privacy & Security, or the xattr command).
+  The saves, settings, game data and shader cache are in the folders above,
+  not in the app, and stay as they are; the data is not asked for again.
+  Takedawn says when a newer release exists: Settings > Advanced > Check for
+  updates (only when you press it; nothing is downloaded).
+
+The licences of everything inside are in
+Takedawn.app/Contents/Resources/licenses.

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Made by tools/android/make-icon.py from assets/icon/takedawn-android-fg.svg; do not edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="1024" android:viewportHeight="1024">
+    <group android:pivotX="512" android:pivotY="512" android:scaleX="0.66" android:scaleY="0.66">
+        <path android:pathData="M202.6,240.0 L892.6,240.0 L831.0,420.0 L651.0,420.0 L603.0,820.0 L363.0,820.0 L411.0,420.0 L181.0,420.0 Z" android:strokeColor="#afd2ff" android:strokeAlpha="0.1"
+            android:strokeWidth="72" android:strokeLineJoin="round"/>
+        <path android:pathData="M202.6,240.0 L892.6,240.0 L831.0,420.0 L651.0,420.0 L603.0,820.0 L363.0,820.0 L411.0,420.0 L181.0,420.0 Z" android:strokeColor="#afd2ff" android:strokeAlpha="0.16"
+            android:strokeWidth="44" android:strokeLineJoin="round"/>
+        <path android:pathData="M202.6,240.0 L892.6,240.0 L831.0,420.0 L651.0,420.0 L603.0,820.0 L363.0,820.0 L411.0,420.0 L181.0,420.0 Z" android:strokeColor="#afd2ff" android:strokeAlpha="0.3"
+            android:strokeWidth="20" android:strokeLineJoin="round"/>
+        <group android:translateX="28" android:translateY="28">
+            <path android:pathData="M202.6,240.0 L892.6,240.0 L831.0,420.0 L651.0,420.0 L603.0,820.0 L363.0,820.0 L411.0,420.0 L181.0,420.0 Z" android:fillColor="#07090d"/>
+        </group>
+        <path android:pathData="M202.6,240.0 L892.6,240.0 L831.0,420.0 L651.0,420.0 L603.0,820.0 L363.0,820.0 L411.0,420.0 L181.0,420.0 Z">
+            <aapt:attr name="android:fillColor">
+              <gradient android:type="linear" android:startX="0" android:startY="240.0" android:endX="0" android:endY="820.0">
+                <item android:offset="0" android:color="#FFE8453A"/>
+                <item android:offset="0.4" android:color="#FFC12020"/>
+                <item android:offset="1" android:color="#FF8D1A1A"/>
+              </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M202.6,240.0 L892.6,240.0 L831.0,420.0 L651.0,420.0 L603.0,820.0 L363.0,820.0 L411.0,420.0 L181.0,420.0 Z">
+            <aapt:attr name="android:fillColor">
+              <gradient android:type="linear" android:startX="0" android:startY="240.0" android:endX="0" android:endY="820.0">
+                <item android:offset="0" android:color="#80FFFFFF"/>
+                <item android:offset="0.42" android:color="#00FFFFFF"/>
+                <item android:offset="1" android:color="#00FFFFFF"/>
+              </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M196.6,290.0 L376.6,290.0 L373.0,320.0 L193.0,320.0 Z" android:fillColor="#07090d"/>
+        <path android:pathData="M189.4,350.0 L319.4,350.0 L315.8,380.0 L185.8,380.0 Z" android:fillColor="#07090d"/>
+        <path android:pathData="M202.6,240.0 L892.6,240.0 L886.5,258.0 L200.5,258.0 Z" android:fillColor="#f4f8ff" android:fillAlpha=".85"/>
+    </group>
+</vector>

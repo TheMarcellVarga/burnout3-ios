@@ -1,0 +1,62 @@
+name: Bug report
+description: Something doesn't work, crashes or looks wrong.
+labels: [bug]
+body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - Linux
+        - Steam Deck
+        - macOS
+        - Android
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Takedawn version
+      description: The first line of the settings menu's Advanced page, e.g. 0.1.0 "Lazy Generation" (game ..., toolkit ...).
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: One line, e.g. "Ryzen 5600 + RX 6700 XT" or "Retroid Pocket 5".
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen
+      description: Mode, track or menu, and whether it happens every time or only sometimes.
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Bug report file
+      description: "Required. In the settings menu, switch on Advanced > Diagnostic logging, restart the game and make the problem happen again. Then Advanced > Create bug report makes a zip with the log and settings (nothing is sent anywhere). Drag it here. I can't look into a report without it."
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshot or video
+      description: If you can see the problem.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you send
+      options:
+        - label: I use my own disc; this report has no game files, disc images or links to them.
+          required: true
+        - label: I searched the existing issues.
+          required: true

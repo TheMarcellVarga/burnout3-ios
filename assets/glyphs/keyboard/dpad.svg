@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16">
+<title>Takedawn button prompts: keyboard, the game's d-pad arrows (32x16)</title>
+<defs><linearGradient id="g1" gradientUnits="userSpaceOnUse" x1="0" y1="0.50" x2="0" y2="12.50"><stop offset="0" stop-color="#e9ebef"/><stop offset="1" stop-color="#a9adb8"/></linearGradient><linearGradient id="g2" gradientUnits="userSpaceOnUse" x1="0" y1="0.50" x2="0" y2="15.50"><stop offset="0" stop-color="#e9ebef"/><stop offset="1" stop-color="#a9adb8"/></linearGradient></defs>
+<rect x="0.50" y="0.50" width="15.00" height="12.00" rx="3.20" fill="#07080b"/>
+<rect x="1.70" y="1.70" width="12.60" height="9.60" rx="2.00" fill="url(#g1)"/>
+<path d="M8.00,2.90 L8.00,9.90 M5.00,6.90 L8.00,10.10 L11.00,6.90" fill="none" stroke="#101218" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="18.50" y="0.50" width="11.00" height="15.00" rx="3.20" fill="#07080b"/>
+<rect x="19.70" y="1.70" width="8.60" height="12.60" rx="2.00" fill="url(#g2)"/>
+<path d="M20.60,8.00 L27.40,8.00 M24.40,5.00 L27.60,8.00 L24.40,11.00" fill="none" stroke="#101218" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

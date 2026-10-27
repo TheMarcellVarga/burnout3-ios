@@ -1,0 +1,18 @@
+{
+  "takedawn": {
+    "url": "https://github.com/xenophobentx/takedawn.git",
+    "commit": "5a00fc10f9548a189e9043c5a55975863ad49175"
+  },
+  "runtime": {
+    "url": "https://github.com/xenophobentx/xboxrecomp.git",
+    "commit": "5ae8ad90d984425e834dee759592c15592679880",
+    "patch": "ios/runtime.patch"
+  },
+  "sdl": {
+    "version": "2.32.10",
+    "url": "https://www.libsdl.org/release/SDL2-2.32.10.tar.gz",
+    "sha256": "5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165",
+    "patch": "ios/sdl.patch"
+  },
+  "deployment_target": "17.4"
+}

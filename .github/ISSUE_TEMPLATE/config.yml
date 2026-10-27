@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ideas and feature requests
+    url: https://github.com/xenophobentx/takedawn/discussions/categories/ideas
+    about: Suggest a feature or vote for one. The most wanted ideas go to the top.
+  - name: Questions
+    url: https://github.com/xenophobentx/takedawn/discussions
+    about: Ask anything that isn't a bug.

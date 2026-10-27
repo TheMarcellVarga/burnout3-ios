@@ -1,0 +1,100 @@
+Mesa 26.2.4, Turnip on KGSL: a wait with timeout 0 is a poll, not a wait for ever.
+
+A backport, adapted by hand to the 26.2.4 source, of two commits on Mesa's
+main branch (Danylo Piliaiev, 2026-09-30, merge request
+https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/44838):
+
+  e984ef294eaf5729d8434694f27de32a8922205c  tu/kgsl: Prevent indefinite wait times for 0 timeout waits
+  6cb65e613254bbbbb33908806818fe40fae0d394  tu/kgsl: Always round up the wait timeout
+
+IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID takes a timeout of 0 as "for ever"
+(kgsl adreno_drawctxt_wait), so every zero-timeout wait of Mesa's common code
+(vkGetFenceStatus, vkGetSemaphoreCounterValue and each submit that signals an
+emulated timeline semaphore) waited for the GPU. The poll now reads the
+retired timestamp (IOCTL_KGSL_CMDSTREAM_READTIMESTAMP_CTXTID). Differences
+from the upstream commits: 26.2.4's wait_timestamp_safe takes the file
+descriptor, not the device, and has no kgsl_timestamp_error, so a failed read
+returns VK_ERROR_UNKNOWN without a log line and the wait keeps 26.2.4's
+handling of its errors. Mesa's code, under Mesa's licence (MIT,
+docs/license.rst). Not needed once the bundled Mesa release contains the two
+commits. Applied by tools/android/fetch-deps.sh with git apply.
+
+--- a/src/freedreno/vulkan/tu_knl_kgsl.cc	2026-10-11 22:22:06.586760680 +0200
++++ b/src/freedreno/vulkan/tu_knl_kgsl.cc	2026-10-11 22:22:06.587468688 +0200
+@@ -5,6 +5,7 @@
+ 
+ #include <errno.h>
+ #include <fcntl.h>
++#include <limits.h>
+ #include <linux/dma-heap.h>
+ #include <poll.h>
+ #include <stdint.h>
+@@ -770,12 +771,27 @@
+        */
+       return -1;
+ 
+-   uint64_t cur_time_ms = os_time_get_nano() / 1000000;
+-   uint64_t abs_timeout_ms = abs_timeout_ns / 1000000;
+-   if (abs_timeout_ms <= cur_time_ms)
++   uint64_t cur_time_ns = os_time_get_nano();
++   if (abs_timeout_ns <= cur_time_ns)
+       return 0;
+ 
+-   return abs_timeout_ms - cur_time_ms;
++   uint64_t relative_ns = abs_timeout_ns - cur_time_ns;
++   uint64_t relative_ms = relative_ns / 1000000 + (relative_ns % 1000000 != 0);
++   return relative_ms > INT_MAX ? -1 : relative_ms;
++}
++
++static VkResult
++kgsl_poll_timestamp(int fd, unsigned int context_id, unsigned int timestamp)
++{
++   struct kgsl_cmdstream_readtimestamp_ctxtid read = {
++      .context_id = context_id,
++      .type = KGSL_TIMESTAMP_RETIRED,
++   };
++
++   if (safe_ioctl(fd, IOCTL_KGSL_CMDSTREAM_READTIMESTAMP_CTXTID, &read))
++      return VK_ERROR_UNKNOWN;
++
++   return timestamp_cmp(read.timestamp, timestamp) ? VK_SUCCESS : VK_TIMEOUT;
+ }
+ 
+ /* safe_ioctl is not enough as restarted waits would not adjust the timeout
+@@ -790,25 +806,24 @@
+    struct kgsl_device_waittimestamp_ctxtid wait = {
+       .context_id = context_id,
+       .timestamp = timestamp,
+-      .timeout = get_relative_ms(abs_timeout_ns),
+    };
+ 
+    while (true) {
+-      int ret = ioctl(fd, IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID, &wait);
+-
+-      if (ret == -1 && (errno == EINTR || errno == EAGAIN)) {
+-         int timeout_ms = get_relative_ms(abs_timeout_ns);
++      /* WAITTIMESTAMP_CTXTID turns a timeout of 0 into a wait for ever (kgsl
++       * adreno_drawctxt_wait): a poll reads the retired timestamp instead.
++       */
++      int timeout_ms = get_relative_ms(abs_timeout_ns);
++      if (timeout_ms == 0)
++         return kgsl_poll_timestamp(fd, context_id, timestamp);
+ 
+-         /* update timeout to consider time that has passed since the start */
+-         if (timeout_ms == 0)
+-            return VK_TIMEOUT;
++      wait.timeout = timeout_ms;
++      int ret = ioctl(fd, IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID, &wait);
++      if (ret == 0)
++         return VK_SUCCESS;
+ 
+-         wait.timeout = timeout_ms;
+-      } else if (ret == -1) {
++      if (errno != EINTR && errno != EAGAIN) {
+          assert(errno == ETIMEDOUT);
+          return VK_TIMEOUT;
+-      } else {
+-         return VK_SUCCESS;
+       }
+    }
+ }

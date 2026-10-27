@@ -1,0 +1,6 @@
+build*/
+*.zip
+*.dmg
+*.AppImage
+*.exe
+package/

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Embedded in the Windows executable (src/game/CMakeLists.txt), release or
+     not. One thing only: the process's ANSI code page is UTF-8 (Windows 10
+     1903 and later; older systems ignore it), so every path the program is
+     given or finds is UTF-8 whatever it is named: arguments, environment
+     variables, %APPDATA%, settings.toml. See the toolkit's
+     src/platform/recomp_utf8_args.h and docs/windows.md. -->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
+    </windowsSettings>
+  </application>
+</assembly>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+<title>Takedawn button prompts: playstation5, the game's B prompt (32x32)</title>
+<defs><linearGradient id="g1" gradientUnits="userSpaceOnUse" x1="0" y1="2.00" x2="0" y2="30.00"><stop offset="0" stop-color="#3a3e49"/><stop offset="1" stop-color="#15171d"/></linearGradient></defs>
+<circle cx="16.00" cy="16.00" r="14.00" fill="#07080b"/>
+<circle cx="16.00" cy="16.00" r="12.40" fill="url(#g1)"/>
+<path d="M6.08,10.30 A11.40,11.40 0 0 1 25.92,10.30" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+<circle cx="16.00" cy="16.00" r="6.4" stroke="#e6e8ee" fill="none" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,6 @@
+// Made from tools/release/windows/manifest.rc.in by src/game/CMakeLists.txt
+// for a Windows build that is not a release (a release has the same line in
+// takedawn.rc): the manifest, takedawn.exe.manifest (the UTF-8 code page).
+// 1 is the resource id Windows reads a program's manifest from, 24 is
+// RT_MANIFEST.
+1 24 "@BO3_RC_MANIFEST@"

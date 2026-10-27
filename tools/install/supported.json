@@ -1,0 +1,19 @@
+{
+  "_comment": "The one place the installer learns which disc it supports. The recompiler's seeds (config/seed_functions.json), the spin-wait list and the entry point in src/game/main.c are all addresses in this exact default.xbe, so any other build (PAL, Japan, a patched or trimmed XBE) must be refused, not tried. To support another build, add an entry here AND regenerate/verify against it.",
+  "builds": [
+    {
+      "id": "ntsc-u-retail",
+      "name": "Burnout 3: Takedown, North America (NTSC-U) retail",
+      "game_dir": "Burnout 3 Takedown",
+      "xbe": {
+        "file": "default.xbe",
+        "sha256": "9f497acd82adb8edfb72cc31aeeb35010b45d32b13a3f1fc6540717ff24d13f9",
+        "size": 4308992,
+        "title_id": "0x4541005B",
+        "region": "North America",
+        "base": "0x10000",
+        "entry": "0x001D2807"
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+<title>Takedawn button prompts: xbox_modern_swapped, the game's A prompt (32x32)</title>
+<defs><linearGradient id="g1" gradientUnits="userSpaceOnUse" x1="0" y1="2.00" x2="0" y2="30.00"><stop offset="0" stop-color="#f0564a"/><stop offset="1" stop-color="#a8161a"/></linearGradient></defs>
+<circle cx="16.00" cy="16.00" r="14.00" fill="#07080b"/>
+<circle cx="16.00" cy="16.00" r="12.40" fill="url(#g1)"/>
+<path d="M6.08,10.30 A11.40,11.40 0 0 1 25.92,10.30" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+<path d="M0,0 L0,10 M0,0 L3,0 A2.4,2.4 0 0 1 3,4.8 L0,4.8 M3,4.8 A2.6,2.6 0 0 1 3,10 L0,10" transform="translate(12.360 9.700) scale(1.3000)" fill="none" stroke="#f4f5f7" stroke-width="2.538" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

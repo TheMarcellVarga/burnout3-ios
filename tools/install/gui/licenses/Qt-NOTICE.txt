@@ -1,0 +1,38 @@
+Qt
+==
+
+Takedawn's setup window (takedawn-setup) is built with Qt @QT_VERSION@ (https://www.qt.io), which
+is used under the terms of the GNU Lesser General Public License version 3
+(LGPLv3), see Qt-LGPL-3.0.txt; that licence refers to the GNU General Public
+License version 3, see Qt-GPL-3.0.txt. Qt is a trademark of The Qt Company Ltd.
+
+Qt is linked dynamically. The program does not contain Qt: it loads Qt's own
+shared libraries, which sit in the application beside it (on macOS in
+Contents/Frameworks and Contents/PlugIns, in the Linux AppImage under usr/lib and usr/plugins,
+on Windows beside the program). You may replace them with your own
+build of the same Qt 6 version. The modules used are QtCore, QtGui, QtWidgets
+and QtDBus, with the "cocoa" platform plugin and the macOS style
+plugin (on Linux the xcb and Wayland platform plugins, on Windows the windows
+platform plugin). All of them are available under the LGPLv3; no module that is
+only available under the GPL or a commercial licence is used.
+
+The macOS and Windows packages carry The Qt Company's own builds of that
+version. The Linux AppImage carries a build made for it from
+qtbase-everywhere-src-@QT_VERSION@.tar.xz (the first address below, under
+6.10/@QT_VERSION@/submodules/) by tools/release/linux/build-qt.sh of this
+project, with HarfBuzz, libpng, PCRE2 and double-conversion from Qt's own
+bundled copies and without ICU.
+The source code of Qt is available from
+  https://download.qt.io/official_releases/qt/
+  https://code.qt.io/cgit/qt/
+The window's own source is in this project's repository, under
+tools/install/gui.
+
+Qt bundles code of other projects inside its own libraries (PCRE2,
+double-conversion, HarfBuzz, libpng, FreeType, md4c, TinyCBOR, the Unicode data
+and more; zlib in the Windows build), each under its own licence. The notices
+and licence texts of what the packages carry are in Qt-THIRD-PARTY.txt, copied
+from the source archive of this Qt version, with the path of each text in it.
+No ICU, GLib or zstd is used. The Linux AppImage links FreeType, fontconfig and
+zlib from the system; the small libraries it does carry (the X11 helpers) bring
+their copyright files into this folder.

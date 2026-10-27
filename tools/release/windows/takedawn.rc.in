@@ -1,0 +1,35 @@
+// Made from tools/release/windows/takedawn.rc.in by src/game/CMakeLists.txt
+// (BO3_RELEASE): the executable's icon, its manifest and what Explorer's
+// Details tab shows.
+#include <winver.h>
+
+@BO3_RC_ICON_LINE@
+
+// The manifest (takedawn.exe.manifest: the UTF-8 code page). 1 is the
+// resource id Windows reads a program's manifest from, 24 is RT_MANIFEST.
+1 24 "@BO3_RC_MANIFEST@"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     @BO3_VERSION_COMMAS@,0
+PRODUCTVERSION  @BO3_VERSION_COMMAS@,0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "ProductName",      "Takedawn"
+            VALUE "FileDescription",  "Takedawn"
+            VALUE "FileVersion",      "@BO3_VERSION@"
+            VALUE "ProductVersion",   "@BO3_VERSION@ @BO3_CODENAME@"
+            VALUE "OriginalFilename", "Takedawn.exe"
+            VALUE "InternalName",     "takedawn"
+            VALUE "LegalCopyright",   "MIT licence; third-party notices in the licenses folder"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

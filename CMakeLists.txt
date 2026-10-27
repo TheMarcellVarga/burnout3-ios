@@ -1,132 +1,122 @@
-cmake_minimum_required(VERSION 3.24)
-project(BurnoutNative LANGUAGES CXX)
-enable_language(ASM)
+cmake_minimum_required(VERSION 3.20)
+project(burnout3_recomp C)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(ENGINE "${CMAKE_CURRENT_SOURCE_DIR}/local/upstream/burnout3-pc/engine")
-if(NOT EXISTS "${ENGINE}/runtime/src/vu0.cpp")
-    message(FATAL_ERROR "Run python3 scripts/prepare_native.py first")
-endif()
-
-add_library(apple_fibers STATIC native/platform/apple_fibers.cpp
-    native/vendor/boost-context/make_arm64_aapcs_macho_gas.S
-    native/vendor/boost-context/jump_arm64_aapcs_macho_gas.S)
-target_include_directories(apple_fibers PUBLIC native/platform)
-target_compile_options(apple_fibers PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:-frounding-math>")
-if(NOT APPLE)
-    message(FATAL_ERROR "This port experiment currently targets Apple platforms")
-endif()
-
-add_library(ps2rt STATIC
-    "${ENGINE}/runtime/src/eefpu.cpp"
-    "${ENGINE}/runtime/src/eeint.cpp"
-    "${ENGINE}/runtime/src/vu0.cpp"
-    "${ENGINE}/runtime/src/lifted_support.cpp")
-target_include_directories(ps2rt PUBLIC "${ENGINE}/runtime/include")
-# Runtime rounding changes are observable; contraction or fast math can change
-# game behavior even when the translated instruction sequence is unchanged.
-target_compile_options(ps2rt PUBLIC -frounding-math -ffp-contract=off)
-
-# The VU microprogram host shares the portable runtime rounding scope;
-# the Apple game host supplies its remaining services.
-add_library(ps2vu_micro STATIC "${ENGINE}/host/src/vu.cpp")
-target_include_directories(ps2vu_micro PUBLIC "${ENGINE}/host/include")
-target_link_libraries(ps2vu_micro PUBLIC ps2rt)
-
-option(BURNOUT_BUILD_TRANSLATED "Compile the generated executable translation" OFF)
-if(BURNOUT_BUILD_TRANSLATED)
-    set(GAME_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/native/game")
-    if(NOT EXISTS "${GAME_DIR}/manifest.json")
-        message(FATAL_ERROR "Run python3 scripts/emit_native_game.py first")
-    endif()
-    file(READ "${GAME_DIR}/manifest.json" GAME_MANIFEST)
-    string(JSON CHUNK_COUNT LENGTH "${GAME_MANIFEST}" chunks)
-    if(CHUNK_COUNT LESS 1)
-        message(FATAL_ERROR "No translated chunks in the game manifest")
-    endif()
-    math(EXPR LAST_CHUNK "${CHUNK_COUNT} - 1")
-    set(GAME_SOURCES)
-    foreach(INDEX RANGE ${LAST_CHUNK})
-        string(JSON CHUNK GET "${GAME_MANIFEST}" chunks ${INDEX})
-        list(APPEND GAME_SOURCES "${GAME_DIR}/${CHUNK}")
-    endforeach()
-    add_library(burnout_translated STATIC ${GAME_SOURCES})
-    target_link_libraries(burnout_translated PUBLIC ps2rt)
-    # Optimize the large generated translation without O3 code-size expansion.
-    target_compile_options(burnout_translated PRIVATE "$<$<CONFIG:Release>:-O2>")
-endif()
-
-find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
-set(HARNESS "${CMAKE_CURRENT_BINARY_DIR}/generated/host.cpp")
-execute_process(COMMAND "${Python3_EXECUTABLE}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/export_native_harness.py" "${HARNESS}"
-    COMMAND_ERROR_IS_FATAL ANY)
-
-option(BURNOUT_BUILD_GPU "Build off-screen Vulkan/Metal rendering with MoltenVK" OFF)
-if(BURNOUT_BUILD_GPU)
-    include(cmake/AppleGpu.cmake)
-endif()
-
-option(BURNOUT_BUILD_HEADLESS "Build the Apple headless game host" OFF)
-if(BURNOUT_BUILD_HEADLESS)
-    include(cmake/HeadlessHost.cmake)
-endif()
+# Burnout 3: Takedown (Xbox, 2004) - Static Recompilation
+#
+# Built on the shared xboxrecomp runtime, the same way hl2 is. The in-tree
+# src/{kernel,d3d,audio,input,apu,nv2a,platform} fork is no longer built: it
+# carried hand-written menus and render paths, and the goal now is the title's
+# own boot sequence on the toolkit every other Xbox recomp uses.
 
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/ios/Info.plist")
-    enable_language(OBJCXX)
-    if(BURNOUT_BUILD_HEADLESS)
-        add_executable(BurnoutNativeProbe MACOSX_BUNDLE
-            native/ios/main.mm native/ios/native_boot.mm native/ios/mobile_quality.cpp native/ios/sixty_fps.cpp native/ios/game_launch.mm native/ios/analog_stick.mm native/tests/analog_tracking_tests.mm native/ios/audio.mm native/tests/runtime_tests.cpp)
-        target_compile_definitions(BurnoutNativeProbe PRIVATE BURNOUT_NATIVE_HOST=1)
-        target_include_directories(BurnoutNativeProbe PRIVATE native/ios)
-        target_link_libraries(BurnoutNativeProbe PRIVATE burnout_game_host)
-        if(BURNOUT_BUILD_GPU)
-            target_sources(BurnoutNativeProbe PRIVATE "${PS2GPU_TEST_HARNESS}" native/ios/gpu_display.mm)
-            target_include_directories(BurnoutNativeProbe PRIVATE "${ENGINE}/gpu/src" "${MVK_ROOT}/include" native/gpu)
-            configure_file("${MVK_ROOT}/../LICENSE" "${CMAKE_CURRENT_BINARY_DIR}/licenses/MoltenVK.txt" COPYONLY)
-            configure_file("${ENGINE}/LICENSE" "${CMAKE_CURRENT_BINARY_DIR}/licenses/PS2Recomp.txt" COPYONLY)
-            configure_file("${CMAKE_CURRENT_SOURCE_DIR}/local/upstream/burnout3-pc/LICENSE"
-                "${CMAKE_CURRENT_BINARY_DIR}/licenses/Burnout3-PC.txt" COPYONLY)
-            file(GLOB GPU_LICENSES "${CMAKE_CURRENT_BINARY_DIR}/licenses/*.txt")
-            set_source_files_properties(${GPU_LICENSES} PROPERTIES MACOSX_PACKAGE_LOCATION Resources/Licenses)
-            target_sources(BurnoutNativeProbe PRIVATE ${GPU_LICENSES})
+    add_compile_definitions(XBOXRECOMP_IOS=1)
+endif()
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
+# Half the cores for /MP: each cl.exe holds a whole generated chunk at /O2,
+# and saturating cores and RAM is what makes the desktop unusable.
+cmake_host_system_information(RESULT _bo3_cores QUERY NUMBER_OF_LOGICAL_CORES)
+math(EXPR _bo3_default_jobs "${_bo3_cores} / 2")
+if(_bo3_default_jobs LESS 1)
+    set(_bo3_default_jobs 1)
+endif()
+set(BO3_COMPILE_JOBS "${_bo3_default_jobs}" CACHE STRING
+    "Parallel cl.exe processes for the recompiled sources (/MP<n>)")
+
+add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX)
+
+# Windows: SDL2 window/audio/pad and the Vulkan backend, as on Linux (the
+# toolkit's XBOXRECOMP_WIN_VULKAN); OFF is the older GDI + Direct3D 11 path.
+# See docs/windows.md.
+option(BO3_WIN_VULKAN "Windows: build the SDL2 + Vulkan host (default)" ON)
+if(WIN32)
+    set(XBOXRECOMP_WIN_VULKAN ${BO3_WIN_VULKAN} CACHE BOOL
+        "Windows: SDL2 window/audio/pad and the Vulkan backend" FORCE)
+endif()
+
+# A release build (tools/release/build-*.sh): the program is named takedawn
+# (Takedawn.exe), the generated code must carry tools/release/gen.sh's stamp
+# for this checkout's regen key with the guest patches in
+# (cmake/release_info.cmake), Windows gets a window program with the icon and
+# version resource, macOS finds its libraries in the bundle's Frameworks.
+# The target stays `burnout3`, and a build without this is what it always was
+# (bin/burnout3).
+option(BO3_RELEASE "Release build: named takedawn, stamped generated code required" OFF)
+if(BO3_RELEASE)
+    # What a packaged program does differently at run time (src/game/main.c:
+    # the display defaults of a first start on a desktop).
+    add_compile_definitions(BO3_RELEASE_BUILD=1)
+endif()
+
+option(BO3_ICALL_FEEDBACK "Record indirect-branch targets for codegen feedback" OFF)
+if(BO3_ICALL_FEEDBACK)
+    add_compile_definitions(RECOMP_ICALL_FEEDBACK)
+endif()
+
+option(BO3_ABI_CHECK "Report functions that clobber callee-saved registers" OFF)
+if(BO3_ABI_CHECK)
+    add_compile_definitions(RECOMP_ABI_CHECK)
+endif()
+
+set(XBOXRECOMP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../xboxrecomp" CACHE PATH "Path to xboxrecomp toolkit")
+
+# Off Windows the kernel links OpenSSL::Crypto but finds it in its own
+# subdirectory, where the imported target is invisible to the executable;
+# finding it here first puts it in scope for both (as blinx2-recomp does).
+if(NOT WIN32 AND NOT ANDROID AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    find_package(OpenSSL REQUIRED)
+endif()
+
+# The toolkit's enhancements layer: render.scale, present.filter,
+# present.fullscreen, and the dashboard video settings the title reads
+# (display.widescreen, display.hdtv). enhance.toml beside the executable,
+# RECOMP_* over it, every key stock by default (config/enhance.toml.default).
+# -DBO3_ENHANCE=OFF builds a layer-free binary for A/B. Forced from
+# BO3_ENHANCE, so a build folder configured before this (where the toolkit's
+# option cached OFF) turns it on too. Only the apexJCL runtime has the layer.
+option(BO3_ENHANCE "Build the toolkit's enhancements layer (enhance.toml)" ON)
+if(EXISTS "${XBOXRECOMP_DIR}/src/enhance/enhance.h")
+    set(XBOXRECOMP_ENHANCE ${BO3_ENHANCE} CACHE BOOL
+        "Build the enhancements layer (enhance.toml, RECOMP_RENDER_SCALE, ...)" FORCE)
+endif()
+
+# The toolkit's in-game settings overlay (Dear ImGui over the Metal and Vulkan
+# presenters; Back+Start, F1, Cmd+,): the pages edit the RECOMP_* settings and
+# keep them in settings.toml in the save folder. C++ and Objective-C++, so the
+# languages are enabled here for the executable's link too. -DBO3_OVERLAY=OFF
+# builds without it. On Windows it rides on the Vulkan presenter.
+option(BO3_OVERLAY "Build the toolkit's in-game settings overlay" ON)
+if((NOT WIN32 OR BO3_WIN_VULKAN) AND EXISTS "${XBOXRECOMP_DIR}/src/overlay/overlay.h")
+    set(XBOXRECOMP_OVERLAY ${BO3_OVERLAY} CACHE BOOL
+        "Build the in-game settings overlay (Dear ImGui)" FORCE)
+    if(BO3_OVERLAY)
+        enable_language(CXX)
+    endif()
+endif()
+
+add_subdirectory(${XBOXRECOMP_DIR} ${CMAKE_BINARY_DIR}/xboxrecomp)
+
+add_subdirectory(src/game)
+
+# The PS2 driving layout's unit test (src/game/controls.h, BO-106).
+if(NOT ANDROID)
+    add_subdirectory(tests/controls)
+    # Which sound goes to which mixer bus (src/game/mixer.c, BO-114).
+    add_subdirectory(tests/mixer)
+    # The GP effects image as wired for the APU's model (BO-119).
+    add_subdirectory(tests/gp)
+    # When a start-up failure may show a message box (src/game/fatal.c).
+    add_subdirectory(tests/fatal)
+endif()
+
+# Line-level symbols for the runtime libraries, so a hang sample inside one
+# names the file and line rather than the nearest public function.
+if(MSVC)
+    foreach(_lib xbox_apu xbox_usb xbox_kernel)
+        if(TARGET ${_lib})
+            target_compile_options(${_lib} PRIVATE /Z7)
         endif()
-    else()
-        add_executable(BurnoutNativeProbe MACOSX_BUNDLE
-            native/ios/main.mm native/tests/runtime_tests.cpp "${HARNESS}")
-    endif()
-    set_property(TARGET BurnoutNativeProbe PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-    set_source_files_properties(native/ios/Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-    target_sources(BurnoutNativeProbe PRIVATE native/ios/Assets.xcassets)
-    target_compile_definitions(BurnoutNativeProbe PRIVATE BURNOUT_RUNTIME_PROBE=1)
-    target_compile_options(BurnoutNativeProbe PRIVATE "$<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>")
-    target_link_libraries(BurnoutNativeProbe PRIVATE ps2rt "-framework UIKit" "-framework CoreGraphics" "-framework AVFAudio" "-framework UniformTypeIdentifiers")
-    set_target_properties(BurnoutNativeProbe PROPERTIES
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/native/ios/Info.plist"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "dev.burnout3.nativeprobe"
-        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "dev.burnout3.nativeprobe"
-        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
-        XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic"
-        XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC "YES"
-        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
-        XCODE_GENERATE_SCHEME TRUE)
-    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.25)
-        set_property(TARGET BurnoutNativeProbe PROPERTY XCODE_SCHEME_LAUNCH_CONFIGURATION Release)
-    endif()
-else()
-    add_executable(fiber_tests native/tests/fiber_tests.cpp)
-    target_link_libraries(fiber_tests PRIVATE apple_fibers)
-    add_executable(runtime_tests native/tests/runtime_tests.cpp "${HARNESS}")
-    target_link_libraries(runtime_tests PRIVATE ps2rt)
-    enable_testing()
-    add_test(NAME apple_fiber_scheduling COMMAND fiber_tests)
-    add_test(NAME console_rounding COMMAND runtime_tests)
-    set_tests_properties(console_rounding PROPERTIES
-        ENVIRONMENT_MODIFICATION "PS2RT_EE_ROUND_NEAREST=unset:")
-    add_test(NAME verification_rounding COMMAND runtime_tests)
-    set_tests_properties(verification_rounding PROPERTIES
-        ENVIRONMENT "PS2RT_EE_ROUND_NEAREST=1")
+    endforeach()
 endif()

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Burnout 3 Takedown Installer
+Comment=Builds Burnout 3: Takedown (PC port) from your own disc
+Exec=burnout3-installer
+Icon=burnout3-installer
+Terminal=false
+Categories=Game;

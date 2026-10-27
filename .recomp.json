@@ -1,0 +1,19 @@
+{
+  "$schema": "https://recomp.fyi/schema/v1.json",
+  "game": "Burnout 3: Takedown",
+  "system": "Xbox",
+  "type": "recomp",
+  "original": { "region": "USA" },
+  "project": "Takedawn",
+  "status": "released",
+  "targets": ["Windows", "Linux", "macOS", "Steam Deck"],
+  "toolchain": "Xboxrecomp",
+  "approach": "Static recompilation of the x86 code to C for x86-64 and arm64, NV2A renderer on Metal and Vulkan",
+  "maintainers": [{ "name": "xenophobentx", "link": "https://github.com/xenophobentx" }],
+  "links": [
+    { "label": "Releases", "url": "https://github.com/xenophobentx/takedawn/releases" },
+    { "label": "xboxrecomp (takedawn branch)", "url": "https://github.com/xenophobentx/xboxrecomp/tree/takedawn" }
+  ],
+  "help": ["Testing on PCs with NVIDIA graphics", "Testing on Linux PCs with Intel graphics"],
+  "notes": "Started from sp00nznet/burnout3. Render scale up to 4x, widescreen HUD fix, ultrawide, 60 fps crash cameras, your own music and 5.1 surround. Needs your own North American Xbox disc; no game data is included. AI coding agents do much of the typing; every change is reviewed and tested on real hardware."
+}

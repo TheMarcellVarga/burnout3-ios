@@ -1,0 +1,28 @@
+name: Feedback
+description: How Takedawn plays and feels for you, good or bad.
+labels: [feedback]
+body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - Linux
+        - Steam Deck
+        - macOS
+        - Android
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: One line, e.g. "Steam Deck OLED" or "Ryzen 5600 + RX 6700 XT".
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Your feedback
+      description: What works well, what feels off, what you'd change.
+    validations:
+      required: true

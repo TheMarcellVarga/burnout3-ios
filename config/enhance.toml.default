@@ -1,0 +1,37 @@
+# Burnout 3 enhancements. Every key below is at its stock value, so this file
+# changes nothing until you edit it. Copy it to bin/enhance.toml (beside the
+# executable) and edit the copy; RECOMP_ENHANCE_CONFIG=<path> reads another
+# file instead. An environment variable wins over the file, e.g.
+# RECOMP_RENDER_SCALE=3 for render.scale. A key missing from your copy runs
+# at its stock value.
+# Reference: the toolkit's docs/runtime/enhance-config.md.
+
+[render]
+scale = 1                 # internal resolution: 1 (stock 640x480), 2 (1280x960),
+                          # 3 (1920x1440), 4 (2560x1920). The game draws 640x480
+                          # at every setting; 16:9 is that frame stretched.
+# shader_cache = "~/Library/Caches/burnout3"
+                          # where the Metal and Vulkan backends keep the list of
+                          # shaders they compiled, to build them at the next
+                          # start before they are drawn (and what
+                          # --build-shaders fills, docs/shader-prebuild.md);
+                          # "none" keeps nothing. Unset: the per-user cache
+                          # directory (the path above on macOS).
+
+[display]
+# The Xbox dashboard's video settings. The game reads them at start-up and
+# acts on them itself: there is no 16:9 or 480p entry in its own Options.
+widescreen = false        # true: the game renders 16:9 (anamorphic, into the
+                          # same 640x480 buffer) and the window shows it 16:9
+hdtv = "off"              # "480p": the game asks for progressive scan. It
+                          # has no 720p or 1080i mode (it always creates a
+                          # 640x480 device), so use "480p".
+aspect = "4:3"            # hor+ is not implemented; widescreen above is the
+                          # game's own 16:9
+
+[present]
+filter = "nearest"        # "nearest" (stock), "linear", "integer"
+aspect = "auto"           # "auto": 16:9 with display.widescreen, else 4:3;
+                          # "frame", "4:3", "16:9" force one
+fullscreen = false        # true: borderless fullscreen at start
+pacing = "spin"           # only matters for code generated with --spin-waits

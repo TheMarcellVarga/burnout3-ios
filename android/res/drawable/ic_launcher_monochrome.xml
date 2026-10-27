@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Made by tools/android/make-icon.py from assets/icon/takedawn-android-fg.svg; do not edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="1024" android:viewportHeight="1024">
+    <group android:pivotX="512" android:pivotY="512" android:scaleX="0.66" android:scaleY="0.66">
+        <path android:fillType="evenOdd" android:fillColor="#FFFFFFFF"
+            android:pathData="M202.6,240.0 L892.6,240.0 L831.0,420.0 L651.0,420.0 L603.0,820.0 L363.0,820.0 L411.0,420.0 L181.0,420.0 Z M196.6,290.0 L376.6,290.0 L373.0,320.0 L193.0,320.0 Z M189.4,350.0 L319.4,350.0 L315.8,380.0 L185.8,380.0 Z"/>
+    </group>
+</vector>

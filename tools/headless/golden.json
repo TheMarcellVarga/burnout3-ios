@@ -1,0 +1,473 @@
+{
+  "about": "Golden frames of the reference scenes (BO-54). Shots are taken by the scene drivers (to_*.sh, CAPTURE=1) at a flip offset from a log anchor; golden.py check/update/determinism. Reference PNGs live in golden_dir (outside git); this file holds only hashes and sizes.",
+  "golden_dir": "runs/golden",
+  "limits": {
+    "same_backend": {
+      "pixel_tol": 8,
+      "max_channel_mae": 1.0,
+      "max_bad_fraction": 0.01,
+      "max_tile_bad_fraction": 0.25
+    },
+    "cross_backend": {
+      "pixel_tol": 24,
+      "max_channel_mae": 6.0,
+      "max_bad_fraction": 0.1,
+      "max_tile_bad_fraction": 0.6
+    },
+    "video": {
+      "pixel_tol": 24,
+      "max_channel_mae": 2.0,
+      "max_bad_fraction": 0.02,
+      "max_tile_bad_fraction": 0.25
+    }
+  },
+  "xmv_place": {
+    "frame": [
+      640,
+      464
+    ],
+    "x": 0,
+    "y": 16,
+    "w": 640,
+    "h": 448
+  },
+  "backends": {
+    "metal": {
+      "status": "recorded on the Mac (M5), RECOMP_PB_BACKEND=metal"
+    },
+    "cpu": {
+      "status": "recorded on the Mac, RECOMP_PB_BACKEND=cpu: the executor's reference (orakulum)"
+    },
+    "vulkan": {
+      "status": "prepared, first on the Deck: the native Linux build (vk/run/burnout3) under deck_env.sh with DECK_NATIVE=1; the Vulkan backend writes back, so RECOMP_FB_DUMP_AT dumps it from guest memory like Metal"
+    },
+    "d3d11": {
+      "status": "prepared, second on the Deck: the Windows build under Proton (deck_env.sh); RECOMP_D3D11_DUMP dumps the listed flips from the back buffer"
+    },
+    "xemu": {
+      "status": "TODO: no xemu on the Mac by decision; see docs/running.md 'Golden frames' for the BLiNX 2 method and what a Deck/Linux capture needs (MCPX + flash BIOS, AppImage, F12 shots)"
+    }
+  },
+  "scenes": {
+    "intro": {
+      "driver": "to_intro.sh",
+      "shots": {
+        "intro_ea": {
+          "anchor": "englis30.xmv",
+          "offset": 90,
+          "video": {
+            "movie": "ovid/englis30.xmv",
+            "fps": 29.97,
+            "window": 8
+          }
+        },
+        "intro_criterion": {
+          "anchor": "cri_rw30.xmv",
+          "offset": 180,
+          "video": {
+            "movie": "ovid/cri_rw30.xmv",
+            "fps": 29.97,
+            "frame": 54,
+            "window": 8
+          }
+        },
+        "intro_titles_a": {
+          "anchor": "Titles30.xmv",
+          "offset": 300,
+          "video": {
+            "movie": "ovid/Titles30.xmv",
+            "fps": 29.97,
+            "window": 8
+          }
+        },
+        "intro_titles_b": {
+          "anchor": "Titles30.xmv",
+          "offset": 1200,
+          "video": {
+            "movie": "ovid/Titles30.xmv",
+            "fps": 29.97,
+            "window": 8
+          }
+        },
+        "intro_titles_c": {
+          "anchor": "Titles30.xmv",
+          "offset": 2400,
+          "video": {
+            "movie": "ovid/Titles30.xmv",
+            "fps": 29.97,
+            "window": 8
+          }
+        }
+      }
+    },
+    "menu": {
+      "driver": "to_menu.sh",
+      "shots": {
+        "menu_attract": {
+          "anchor": "_FEMain.xmv",
+          "offset": 150,
+          "skip": {
+            "cpu": "the menu's background is the attract movie, which plays on its own clock: on the CPU rasteriser it is elsewhere in the movie at the same flip (and differs between two CPU runs)"
+          }
+        },
+        "menu_main": {
+          "anchor": "_FEMain.xmv",
+          "offset": 800,
+          "masks": [
+            {
+              "rect": [
+                20,
+                384,
+                345,
+                70
+              ],
+              "why": "EA Trax box: the song is picked at random"
+            }
+          ],
+          "skip": {
+            "cpu": "the menu's background is the attract movie, which plays on its own clock: on the CPU rasteriser it is elsewhere in the movie at the same flip (and differs between two CPU runs)"
+          }
+        }
+      }
+    },
+    "race": {
+      "driver": "to_race.sh",
+      "shots": {
+        "race_start": {
+          "anchor": "tracks\\crash1.rws",
+          "offset": 300,
+          "masks": [
+            {
+              "rect": [
+                20,
+                384,
+                345,
+                90
+              ],
+              "why": "EA Trax box: the song is picked at random"
+            }
+          ]
+        }
+      }
+    },
+    "crash": {
+      "driver": "to_crash.sh",
+      "shots": {
+        "crash_intro": {
+          "anchor": "C3_V1\\streamed.dat",
+          "offset": 240
+        },
+        "crash_caption": {
+          "anchor": "tracks\\crash2.rws",
+          "offset": 200
+        }
+      }
+    },
+    "crashcam": {
+      "driver": "to_crash.sh",
+      "shots": {
+        "crash_cam": {
+          "anchor": "C3_v1\\crash1.rws",
+          "offset": 60,
+          "skip": {
+            "cpu": "the crash is driven by the player: the CPU rasteriser runs the junction at ~5 fps, and the title can then take more than one simulation step a frame (at least one a frame, sub_001B58E0), while the accelerator is held by the wall clock, so the car meets the traffic elsewhere; the shots before the GO (crash_intro, crash_caption) still match Metal"
+          },
+          "note": "bit-identical across Metal runs on toolkit fb3ca80; on 4a5572b (vblank sync to the display, present-early, two frames in flight) the impact comes 841-959 flips after the accelerator and the crash differs run to run (5 runs, load 6-7): open, see BO-54"
+        },
+        "crash_results": {
+          "anchor": "C3_v1\\crash1.rws",
+          "offset": 900,
+          "skip": {
+            "cpu": "the crash is driven by the player: the CPU rasteriser runs the junction at ~5 fps, and the title can then take more than one simulation step a frame (at least one a frame, sub_001B58E0), while the accelerator is held by the wall clock, so the car meets the traffic elsewhere; the shots before the GO (crash_intro, crash_caption) still match Metal"
+          },
+          "note": "bit-identical across Metal runs on toolkit fb3ca80; on 4a5572b (vblank sync to the display, present-early, two frames in flight) the impact comes 841-959 flips after the accelerator and the crash differs run to run (5 runs, load 6-7): open, see BO-54"
+        }
+      }
+    },
+    "garage": {
+      "driver": "to_garage.sh",
+      "shots": {
+        "garage_details": {
+          "anchor": "_FEMain.xmv",
+          "offset": 1100,
+          "masks": [
+            {
+              "rect": [
+                20,
+                384,
+                345,
+                70
+              ],
+              "why": "EA Trax box: the song is picked at random"
+            }
+          ],
+          "skip": {
+            "cpu": "the menu's background is the attract movie, which plays on its own clock: on the CPU rasteriser it is elsewhere in the movie at the same flip (and differs between two CPU runs)"
+          }
+        },
+        "garage_car": {
+          "anchor": "CAR1.bgv",
+          "offset": 150
+        }
+      }
+    }
+  },
+  "references": {
+    "metal": {
+      "intro_criterion": {
+        "sha256": "5d87efdbbe0c5f755764c56991debec8c979e38302d318df38ffcaa69bca8cc9",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/b2/intro1",
+        "recorded": "2026-10-10"
+      },
+      "intro_ea": {
+        "sha256": "7887262d039b70950c0d42db13e36b2e64bdab49c900f82b403ddfdd3f84fd8a",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/b2/intro1",
+        "recorded": "2026-10-10"
+      },
+      "intro_titles_a": {
+        "sha256": "da143034bc8dfa7a9fd46384640e4a9452030cfa49434e7643c18f62fec5f1b2",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/b2/intro1",
+        "recorded": "2026-10-10"
+      },
+      "intro_titles_b": {
+        "sha256": "32f48cd79b5e747202ac1aac91e00f0be26770caff3a8e7dc84ea0e6c2cc452d",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/b2/intro1",
+        "recorded": "2026-10-10"
+      },
+      "intro_titles_c": {
+        "sha256": "709a90026cda48187e31d5dfb2e5aee568a7505bdb8ce240e6fb62829ca409ca",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/b2/intro1",
+        "recorded": "2026-10-10"
+      },
+      "menu_attract": {
+        "sha256": "a8aec8416a237685da97fdd4123f505708bf859a91e453ff60cafc1939243f0b",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/f1/crash1",
+        "recorded": "2026-10-10"
+      },
+      "menu_main": {
+        "sha256": "ffbb243d27cf5d35a5640cecf3fd03d9f31ab5a4a86469145f6cdd97e21e1d25",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/f1/crash1",
+        "recorded": "2026-10-10"
+      },
+      "race_start": {
+        "sha256": "4fef612ab2a9dfd6a30bb5c6a7fd41ab7da0654a28678f7977934a59fea04252",
+        "size": [
+          640,
+          480
+        ],
+        "from": "runs/b2/race1",
+        "recorded": "2026-10-10"
+      },
+      "garage_car": {
+        "sha256": "843cd8c1ef20020838037e25c1e70aa9483462817b3935d2bc673e265318f145",
+        "size": [
+          640,
+          480
+        ],
+        "from": "g2/garage215",
+        "recorded": "2026-10-17"
+      },
+      "garage_details": {
+        "sha256": "1cd8a03097bd5fd5984eb4485616a83ed75d666af1cb61b1b9f56e42d2e992f8",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/b2/garage1",
+        "recorded": "2026-10-10"
+      },
+      "crash_cam": {
+        "sha256": "fbf6f662eb7a763d0409f2307700adcbf385866b7dee8f6ae7f5ea82ba9d7361",
+        "size": [
+          640,
+          480
+        ],
+        "from": "runs/f1/crash1",
+        "recorded": "2026-10-10"
+      },
+      "crash_caption": {
+        "sha256": "a3d07be64943392ca183d02c27eea47058d69562ad90275c32a55f6a11f0479e",
+        "size": [
+          640,
+          480
+        ],
+        "from": "runs/f1/crash1",
+        "recorded": "2026-10-10"
+      },
+      "crash_intro": {
+        "sha256": "59f827a5af97b2694f15b6cb8035dd9d8f1a101e60984980525772bea329c1eb",
+        "size": [
+          640,
+          480
+        ],
+        "from": "g2/crash215",
+        "recorded": "2026-10-17"
+      },
+      "crash_results": {
+        "sha256": "0dbd7ae079cd9e65ad75e0c57580443a1f17342303e61a7327f85675ef664f5f",
+        "size": [
+          640,
+          480
+        ],
+        "from": "runs/f1/crash1",
+        "recorded": "2026-10-10"
+      }
+    },
+    "cpu": {
+      "garage_car": {
+        "sha256": "80adf8496c6cd538146eab182753b16fff2b8e184cd3358cf6aae006270a74eb",
+        "size": [
+          640,
+          480
+        ],
+        "from": "runs/c3/garage1",
+        "recorded": "2026-10-10"
+      },
+      "garage_details": {
+        "sha256": "9680846c310ec62911e07db16aa8ff3f7272793083b54a55b87c7b916d46989e",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/c3/garage1",
+        "recorded": "2026-10-10"
+      },
+      "menu_attract": {
+        "sha256": "c68a272acc3574291a9df6664cdaa0f18ee82016c474b518a6093c50c548214c",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/c3/crash1",
+        "recorded": "2026-10-10"
+      },
+      "menu_main": {
+        "sha256": "37e768da737ba0ad9b6191943653d2a162e0b4928157891ac814e40f85c4f5d1",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/c3/crash1",
+        "recorded": "2026-10-10"
+      },
+      "race_start": {
+        "sha256": "a8bd17c720c90db7b614740bf1194dc14da9125a890b45b6353a03f31cf0f52d",
+        "size": [
+          640,
+          480
+        ],
+        "from": "runs/c3/race1",
+        "recorded": "2026-10-10"
+      },
+      "intro_criterion": {
+        "sha256": "41b933ac7c9efeec65a00623e61519816c02580bea2c8f499f1c85f741763480",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/c3/intro1",
+        "recorded": "2026-10-10"
+      },
+      "intro_ea": {
+        "sha256": "b7a88ec6d79c2812e4d3140b32404d631d0f66ba88d883acdd74fc524fc879f3",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/c3/intro1",
+        "recorded": "2026-10-10"
+      },
+      "intro_titles_a": {
+        "sha256": "647cc94cac55ff14ac1ff7163e980b6ddac5d7aed5ff96cc480e64ac465060e3",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/c3/intro1",
+        "recorded": "2026-10-10"
+      },
+      "intro_titles_b": {
+        "sha256": "326748b7eebe7612af14935986017a14966e824244ed4ab8afa4fabd738313ba",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/c3/intro1",
+        "recorded": "2026-10-10"
+      },
+      "intro_titles_c": {
+        "sha256": "16d0d79ec1e829ce233cdf13cb967293ea13d1cb4155923b463e275d540d2806",
+        "size": [
+          640,
+          464
+        ],
+        "from": "runs/c3/intro1",
+        "recorded": "2026-10-10"
+      },
+      "crash_cam": {
+        "sha256": "a384dd6fb642b6982940720e119fca4d90262d6183c487dd25545658ba1bda4c",
+        "size": [
+          640,
+          480
+        ],
+        "from": "runs/c3/crash1",
+        "recorded": "2026-10-10"
+      },
+      "crash_caption": {
+        "sha256": "7e8897a2bce1df0d4298faace1ba03e069d725e9c8eba33031a3bb15796776f0",
+        "size": [
+          640,
+          480
+        ],
+        "from": "runs/c3/crash1",
+        "recorded": "2026-10-10"
+      },
+      "crash_intro": {
+        "sha256": "78535461ea9b373c3fe87a94c7813f70134a56feb698a879ec46ceb93a5ef991",
+        "size": [
+          640,
+          480
+        ],
+        "from": "runs/c3/crash1",
+        "recorded": "2026-10-10"
+      },
+      "crash_results": {
+        "sha256": "07d8dd4913d4027a3332e3e7c9c4678188ea915fbf646028a134be48996f37b4",
+        "size": [
+          640,
+          480
+        ],
+        "from": "runs/c3/crash1",
+        "recorded": "2026-10-10"
+      }
+    }
+  }
+}

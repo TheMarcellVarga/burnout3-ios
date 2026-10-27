@@ -1,0 +1,17 @@
+#!/bin/sh
+# Takedawn's AppImage entry: the game, with the libraries the image carries
+# (SDL and what else the build machine's runtime had that a system may lack)
+# ahead of the system's. The Vulkan loader, the graphics drivers, glibc and
+# libstdc++ are always the system's.
+here=$(dirname "$(readlink -f "$0")")
+# What the person had set is kept under the name the AppImage tools use for it
+# (the setup window gives its children the image's usr/lib plus this).
+if [ -n "${LD_LIBRARY_PATH:-}" ]; then
+    APPIMAGE_ORIGINAL_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+    export APPIMAGE_ORIGINAL_LD_LIBRARY_PATH
+else
+    unset APPIMAGE_ORIGINAL_LD_LIBRARY_PATH
+fi
+LD_LIBRARY_PATH="$here/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH
+exec "$here/usr/bin/takedawn" "$@"

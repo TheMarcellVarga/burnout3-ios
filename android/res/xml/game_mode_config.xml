@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The game modes (Android 13's GameManager): the game runs the same in
+     each, and the system is not to lower its resolution or frame rate for
+     it (allowGameDownscaling, allowGameFpsOverride). -->
+<game-mode-config xmlns:android="http://schemas.android.com/apk/res/android"
+    android:supportsPerformanceGameMode="true"
+    android:supportsBatteryGameMode="true"
+    android:allowGameDownscaling="false"
+    android:allowGameFpsOverride="false" />

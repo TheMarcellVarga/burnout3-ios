@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Takedawn
+Comment=Plays Burnout 3: Takedown from your own disc
+Exec=takedawn
+Icon=takedawn
+Terminal=false
+Categories=Game;
+StartupWMClass=takedawn
