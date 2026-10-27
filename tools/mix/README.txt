@@ -1,3 +1,5 @@
+Component reference inherited from Takedawn. For the main iOS app, see ../../ios/README.md.
+
 tools/mix: the BO-114 mix study (what a custom 5.1 mixer could tell apart).
 
 The trace is the toolkit's RECOMP_MIX_TRACE=<file> (src/apu/apu_vp.c): off by

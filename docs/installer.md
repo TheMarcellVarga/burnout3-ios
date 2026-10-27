@@ -1,5 +1,10 @@
 # Installer (BO-92)
 
+> **Upstream platform reference.** For this repository’s main iOS app, use the
+> [iOS guide](../ios/README.md) and [project README](../README.md). The desktop/Android
+> commands and support claims below belong to upstream Takedawn.
+
+
 > Status, 2026-10-12: this describes the source installer (recompile and build
 > on the player's machine). Since the 2026-10-11 decision the releases ship the
 > prebuilt program with the compiled game code, and the setup only checks the

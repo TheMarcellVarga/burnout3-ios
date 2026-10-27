@@ -1,5 +1,10 @@
 # Android build (SDL2 + Vulkan, arm64)
 
+> **Upstream platform reference.** For this repository’s main iOS app, use the
+> [iOS guide](../ios/README.md) and [project README](../README.md). The desktop/Android
+> commands and support claims below belong to upstream Takedawn.
+
+
 State on 2026-10-11 (BO-85), reference device Retroid Pocket 5 (Snapdragon
 865, Adreno 650, Android 13): the APK builds and installs, the title boots
 through its own entry point, draws through the Vulkan backend on Mesa's Turnip

@@ -1,3 +1,5 @@
+Component reference inherited from Takedawn. For the main iOS app, see ../../../ios/README.md.
+
 Takedawn @VERSION@ for Windows (x64)
 
 Windows 10 or 11, 64-bit, and a graphics driver with Vulkan (any current

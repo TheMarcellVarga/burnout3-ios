@@ -1,5 +1,10 @@
 # Making a release (BO-103)
 
+> **Upstream platform reference.** For this repository’s main iOS app, use the
+> [iOS guide](../ios/README.md) and [project README](../README.md). The desktop/Android
+> commands and support claims below belong to upstream Takedawn.
+
+
 A release is a set of prebuilt programs, one per platform, all compiled from
 the same generated code. None of them contains game data: the player's own
 disc supplies that at first start ([installer.md](installer.md), "The data

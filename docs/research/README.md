@@ -1,3 +1,6 @@
+> Component reference inherited from Takedawn. For the main iOS app, see the
+> [iOS guide](../../ios/README.md).
+
 # Research notes
 
 Notes on Burnout 3's formats and executable from the early reverse-engineering,

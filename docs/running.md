@@ -1,5 +1,10 @@
 # Running, recording and driving it headless
 
+> **Upstream platform reference.** For this repository’s main iOS app, use the
+> [iOS guide](../ios/README.md) and [project README](../README.md). The desktop/Android
+> commands and support claims below belong to upstream Takedawn.
+
+
 ## The executable
 
 ```

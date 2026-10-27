@@ -1,5 +1,10 @@
 # Architecture
 
+> **Upstream platform reference.** For this repository’s main iOS app, use the
+> [iOS guide](../ios/README.md) and [project README](../README.md). The desktop/Android
+> commands and support claims below belong to upstream Takedawn.
+
+
 > Note, 2026-10-11: this page was written for the upstream project's Windows
 > build with a software renderer and has not been rewritten yet. The split
 > between the two repositories and the data flow still hold. What changed: the

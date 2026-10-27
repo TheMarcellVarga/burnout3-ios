@@ -1,7 +1,12 @@
 # Building from source
 
+> **Upstream platform reference.** For this repository’s main iOS app, use the
+> [iOS guide](../ios/README.md) and [project README](../README.md). The desktop/Android
+> commands and support claims below belong to upstream Takedawn.
+
+
 For developers. Players do not need any of this: the downloads are ready to
-run (see the [README](../README.md)).
+run (see the [upstream README](UPSTREAM_README.md)).
 
 The repository holds no game code and no game data. A build translates your
 own `default.xbe` into C and compiles that, so you need your own disc of the
@@ -41,7 +46,7 @@ release has a tag there, `takedawn-<version>`, at the commit its packages were
 built from:
 
 ```sh
-git clone https://github.com/xenophobentx/takedawn
+git clone https://github.com/TheMarcellVarga/burnout3-ios.git
 git clone -b takedawn https://github.com/xenophobentx/xboxrecomp
 git -C xboxrecomp checkout takedawn-0.2.0   # the toolkit of release 0.2.0
 ```

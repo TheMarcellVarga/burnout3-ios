@@ -1,8 +1,9 @@
 # Burnout 3 iOS
 
-This adapts the Xbox-based Takedawn project for iOS, independently of the
-PS2-based burnout3-ios project. It retains Takedawn and xboxrecomp attribution
-and their existing licenses. No game files or generated game code are tracked.
+This is the Xbox-based iOS implementation on this repository’s `main` branch.
+It adapts Takedawn and xboxrecomp while retaining their attribution and licenses.
+The former PS2 source is preserved on [ps2-legacy](https://github.com/TheMarcellVarga/burnout3-ios/tree/ps2-legacy).
+No game files or generated game code are tracked.
 
 ## Current state
 
@@ -10,13 +11,15 @@ The only installed app is **Burnout 3**, using the Xbox-based runtime and
 the red B3 logo on a white background. The older PS2 app was removed
 from the device at the owner’s request after backing up its memory card saves.
 
-Device validation as of 23 October 2026:
+Current installed build: **13** (27 October 2026). Race/performance evidence
+below was collected on 23 October; later identity and icon checks are recorded
+in [DEVICE_STATUS.md](DEVICE_STATUS.md).
 
 - All 716 supplied USA Xbox files match the upstream disc manifest.
 - Translation generated 24,001 functions without generation failures, plus
   upstream stubs for 15 unresolved call targets. Not every game path is tested.
 - The signed ARM64 Release app targets iOS 17.4+ and runs on the owner's
-  iPhone 15 Pro Max. The original PS2 app and its data remain separate.
+  iPhone 15 Pro Max. PS2 memory-card saves were backed up before that app was removed.
 - On the phone: intro, menus, garage, Silver Lake Southbound race, scripted
   acceleration/steering/braking/pause, and profile save followed by a fresh
   launch and successful profile reload were exercised.
@@ -60,6 +63,8 @@ handling and audio interruptions are not yet validated.
 ## Build
 
 Use an Apple Silicon Mac with Xcode, the iOS SDK, CMake, Python 3.10+ and Git.
+Clone [this repository’s main branch](https://github.com/TheMarcellVarga/burnout3-ios/tree/main),
+then run the following commands from its root. Do not use the PS2 branch’s build scripts.
 The preparation script pins SDL and the Xbox runtime and applies
 [runtime.patch](runtime.patch) and [sdl.patch](sdl.patch). Downloaded dependencies, disc files, generated
 sources and build products remain ignored.
@@ -102,7 +107,7 @@ importing; the app does not overwrite it.
 
 The first bounded race and save/relaunch check have passed. Next validate touch
 interaction, audio, a complete race, background/resume and sustained memory/thermal
-behavior before deciding whether to migrate from the PS2 implementation.
+behavior as follow-up validation for the main Xbox implementation.
 
 ## Host controller regression
 
@@ -122,8 +127,8 @@ as a reviewable patch; the upstream runtime license notices remain in place.
 
 ## Migration scope
 
-The Xbox implementation is the base for our next iOS build; the PS2 repository
-remains a fallback and comparison target. The native settings interaction and
+The Xbox implementation is now the main iOS app. The [ps2-legacy branch](https://github.com/TheMarcellVarga/burnout3-ios/tree/ps2-legacy)
+preserves the older implementation for source comparison. The native settings interaction and
 project artwork carry forward from that app, while Xbox-specific rendering and
 input use Takedawn/xboxrecomp. PS2 saves and renderer-specific switches are not
 compatible and are not copied automatically.
@@ -145,7 +150,7 @@ and license texts under Settings → Credits & licenses.
 The default Hybrid layout combines the earlier iOS analog stick treatment with
 the Xbox runtime's contextual racing controls. GAS (RT), BOOST (A + RT) and
 BRAKE (LT) form a compact right-thumb cluster. Slide between gas and boost
-without lifting; brake remains a distinct target. Smaller B / X / Y buttons
+without lifting; brake remains a distinct target. Smaller CRASH, LOOK and VIEW buttons
 handle crashbreaker, look behind and camera view. Menus retain Xbox A/B/X/Y.
 
 The left stick anchors near its visible resting position. Touch farther away

@@ -1,3 +1,5 @@
+Component reference inherited from Takedawn. For the main iOS app, see ../../../ios/README.md.
+
 Takedawn @VERSION@ for Linux (x86-64): desktop distributions and the Steam Deck
 
 Run

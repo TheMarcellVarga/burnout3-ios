@@ -1,5 +1,10 @@
 # Testing
 
+> **Upstream platform reference.** For this repository’s main iOS app, use the
+> [iOS guide](../ios/README.md) and [project README](../README.md). The desktop/Android
+> commands and support claims below belong to upstream Takedawn.
+
+
 How the port is tested, and the tools that make it quick. Most of it needs no
 hands: the game can drive itself, a script can press the menus, and the
 settings menu can be drawn without a window. You need your own disc and a

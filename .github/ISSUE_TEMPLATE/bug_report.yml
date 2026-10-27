@@ -1,5 +1,5 @@
 name: Bug report
-description: Something doesn't work, crashes or looks wrong.
+description: Report a problem with the Xbox-based Burnout 3 iOS app.
 labels: [bug]
 body:
   - type: dropdown
@@ -7,6 +7,7 @@ body:
     attributes:
       label: Platform
       options:
+        - iOS
         - Windows
         - Linux
         - Steam Deck
@@ -17,15 +18,15 @@ body:
   - type: input
     id: version
     attributes:
-      label: Takedawn version
-      description: The first line of the settings menu's Advanced page, e.g. 0.1.0 "Lazy Generation" (game ..., toolkit ...).
+      label: App version and build
+      description: Include the installed iOS build number and the commit used to build it.
     validations:
       required: true
   - type: input
     id: device
     attributes:
       label: Device
-      description: One line, e.g. "Ryzen 5600 + RX 6700 XT" or "Retroid Pocket 5".
+      description: For iOS, include iPhone/iPad model and iOS version. For other platforms, include the hardware and graphics backend.
   - type: textarea
     id: what
     attributes:
@@ -42,10 +43,10 @@ body:
   - type: textarea
     id: report
     attributes:
-      label: Bug report file
-      description: "Required. In the settings menu, switch on Advanced > Diagnostic logging, restart the game and make the problem happen again. Then Advanced > Create bug report makes a zip with the log and settings (nothing is sent anywhere). Drag it here. I can't look into a report without it."
+      label: Reviewed log or crash report
+      description: "For iOS, attach Documents/takedawn.log or an iOS crash report if available. Review it for private paths first. Do not include game files, profiles or caches."
     validations:
-      required: true
+      required: false
   - type: textarea
     id: media
     attributes:

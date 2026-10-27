@@ -1,5 +1,10 @@
 # Windows build (SDL2 + Vulkan)
 
+> **Upstream platform reference.** For this repository’s main iOS app, use the
+> [iOS guide](../ios/README.md) and [project README](../README.md). The desktop/Android
+> commands and support claims below belong to upstream Takedawn.
+
+
 The Windows build uses the same stack as Linux: SDL2 window, audio (WASAPI via
 SDL) and pads, the Vulkan backend (`nv2a_pb_vulkan.c`, `fb_present_vulkan.c`,
 glslang) and the Dear ImGui overlay. The kernel and platform layers stay the

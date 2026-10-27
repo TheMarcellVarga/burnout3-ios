@@ -1,3 +1,6 @@
+> Component reference inherited from Takedawn. For the main iOS app, see the
+> [iOS guide](../../ios/README.md).
+
 # Button prompts (`input.glyphs`)
 
 Original artwork for this project: the prompts the game shows (Select, Back,

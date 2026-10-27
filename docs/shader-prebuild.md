@@ -1,5 +1,10 @@
 # Shader pre-build (BO-93)
 
+> **Upstream platform reference.** For this repository’s main iOS app, use the
+> [iOS guide](../ios/README.md) and [project README](../README.md). The desktop/Android
+> commands and support claims below belong to upstream Takedawn.
+
+
 The GPU backends (Metal on macOS, Vulkan on Linux, the Steam Deck and Windows)
 compile a shader or a pipeline the first time a draw needs it, on the render
 thread, so a fresh install hitches at the garage, at the first race start and

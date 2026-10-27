@@ -1,3 +1,6 @@
+> Component reference inherited from Takedawn. For the main iOS app, see the
+> [iOS guide](../../ios/README.md).
+
 # Takedawn icon
 
 Original artwork for this project (the "crimson T" on the navy panel); nothing

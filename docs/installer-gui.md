@@ -1,5 +1,10 @@
 # Installer window (BO-92)
 
+> **Upstream platform reference.** For this repository’s main iOS app, use the
+> [iOS guide](../ios/README.md) and [project README](../README.md). The desktop/Android
+> commands and support claims below belong to upstream Takedawn.
+
+
 A Qt 6 window over `tools/install/install.py`. It does no installing itself: it
 runs the driver as a subprocess, reads the line protocol from
 [`installer.md`](installer.md) and shows it. Everything is under
