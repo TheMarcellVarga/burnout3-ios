@@ -3,6 +3,9 @@
 #include "ps2host/gs.h"
 #include "apple_frame_sink.h"
 #include "apple_touch_input.h"
+#if BURNOUT_IOS
+#include "mobile_settings.h"
+#endif
 #include "apple_audio_sink.h"
 #if PS2HOST_VULKAN
 #include "ps2gpu/gs_renderer.h"
@@ -109,7 +112,13 @@ bool WindowFullscreen() { return fullscreen; }
 void SetWindowVsync(bool on) { vsync = on; }
 bool WindowVsync() { return vsync; }
 void SetWindowAspect(const std::string& value) { aspect = value == "16:9" ? 16.0f / 9.0f : 4.0f / 3.0f; }
-float PictureAspect() { return aspect; }
+float PictureAspect() {
+#if BURNOUT_IOS
+    return applehost::MobilePictureAspect();
+#else
+    return aspect;
+#endif
+}
 void SetWindowAntiAliasing(const std::string& mode) { supersampling = mode == "ssaa4" ? 4 : mode == "ssaa2" ? 2 : 1; }
 u32 SupersamplingFactor() { return supersampling; }
 void SetWindowStatus(const std::string&) {}

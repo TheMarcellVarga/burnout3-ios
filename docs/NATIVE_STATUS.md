@@ -48,3 +48,29 @@ The repository includes Mac runtime, translation, headless-host and GPU checks.
 The setup and commands are in the [README](../README.md#build-and-run). Generated
 game code, disc data, captures and test reports stay under ignored `local/` and
 `build/` paths.
+
+## In-game iOS settings
+
+The port-settings entry uses the game's own lists, strings, help ticker and
+controller prompts. Display and Graphics has three options; Touch Controls has
+four. Cross cycles a value and Triangle returns to the previous page. Reset iOS
+Settings uses the game's own Yes/No box with No selected initially; Yes restores
+only the iOS defaults and returns to the menu instead of exiting the game.
+There is no UIKit settings sheet or separate preview app.
+
+The canonical saved choices, defaults, validation and steering curve live in
+`native/platform/mobile_settings.h`. The UIKit touch overlay observes saved
+changes on its main thread. The Metal drawable follows the selected 1x/2x scale.
+Both the GPU view and CPU fallback use 4:3/16:9 presentation bounds; the game
+camera and HUD read that aspect from the Apple host. Frame pacing stays on;
+normal play retains mobile reflection and depth-haze optimizations.
+
+`ios_settings_tests` runs the actual guest menu code with bounded guest-memory,
+string-lookup and drawing fixtures. It checks text-pool capacity, page entry and
+row counts, cycling and persisting every option, both reset answers, default-No
+confirmation, and restoration of the original main-menu entries. It also checks
+legacy-value normalization, steering endpoints and reset isolation. Run with
+`ctest --test-dir build/cmake-game -R ios_settings --output-on-failure`.
+
+Physical visual checks remain pending; the owner elected to finish with build
+and automated checks during the settings rework.

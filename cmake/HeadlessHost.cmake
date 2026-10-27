@@ -52,6 +52,10 @@ set(GAME_PORT "${CMAKE_CURRENT_SOURCE_DIR}/local/upstream/burnout3-pc/games/burn
 add_library(burnout_game_host STATIC "${HEADLESS_DIR}/dispatch.cpp" "${HEADLESS_DIR}/discovered.cpp"
     "${GAME_PORT}/overrides.cpp" "${GAME_PORT}/iop_servers.cpp" "${GAME_PORT}/widescreen.cpp"
     "${GAME_PORT}/mouse.cpp" "${GAME_PORT}/prompts.cpp" "${GAME_PORT}/controls.cpp")
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_compile_definitions(burnout_game_host PRIVATE BURNOUT_IOS=1)
+    target_compile_definitions(ps2host_apple PRIVATE BURNOUT_IOS=1)
+endif()
 target_link_libraries(burnout_game_host PUBLIC burnout_translated ps2host_apple)
 target_sources(burnout_game_host INTERFACE $<TARGET_OBJECTS:burnout_vu_programs>)
 add_executable(burnout_headless native/headless/main.cpp)
@@ -68,6 +72,14 @@ target_link_libraries(apple_host_tests PRIVATE ps2host_apple)
 set_property(TARGET apple_host_tests PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 add_test(NAME apple_host_semantics COMMAND apple_host_tests)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    # Compile the real iOS menu choices without linking the translated game.
+    # Dead stripping drops unused guest hooks from the included port source.
+    add_executable(ios_settings_tests native/tests/ios_settings_tests.cpp)
+    target_include_directories(ios_settings_tests PRIVATE "${GAME_PORT}" native/ios)
+    target_compile_options(ios_settings_tests PRIVATE -ffunction-sections -fdata-sections)
+    target_link_options(ios_settings_tests PRIVATE -Wl,-dead_strip)
+    target_link_libraries(ios_settings_tests PRIVATE ps2host_apple)
+    add_test(NAME ios_settings COMMAND ios_settings_tests)
     add_executable(vu_capture_tests native/tests/vu_capture_tests.cpp $<TARGET_OBJECTS:burnout_vu_programs>)
     target_link_libraries(vu_capture_tests PRIVATE ps2host_apple)
     add_executable(gs_thread_tests native/tests/gs_thread_tests.cpp)

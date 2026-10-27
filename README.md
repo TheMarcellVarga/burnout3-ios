@@ -1,5 +1,6 @@
 # Burnout 3: Takedown for iOS
 
+
 An experimental native iOS port of **Burnout 3: Takedown**, inspired by
 [burnout3-pc](https://github.com/danielgomesvieira2000/burnout3-pc). This project
 targets the PlayStation 2 version and brings it to Apple ARM64 with GPU
@@ -63,6 +64,43 @@ device reports and captures are kept under ignored `local/` paths and are not
 included here. Of 9,368 analyzed game functions, 9,366 translate into 44 C++
 chunks; that translation count does not mean every function is behaviorally
 verified.
+
+## iOS settings
+
+Select **iOS Settings** in the game's main menu. All settings use the game's
+own menu graphics, help ticker and button prompts. Use the on-screen D-pad to
+choose a page or row, Cross to cycle a value, and Triangle to go back. The pages
+are **Display and Graphics**, **Touch Controls**, and **Reset iOS Settings**.
+Changes apply immediately and save across launches.
+
+| Setting | Choices | Default |
+| --- | --- | --- |
+| Render resolution | Original (640 × 448), Sharper (1280 × 896) | Original |
+| Picture shape | Original (4:3), Widescreen (16:9) | Original |
+| Blur and glow | Off, On | Off |
+| Racing buttons | Classic, Triggers | Classic |
+| Steering response | Gentle, Standard, Quick | Standard |
+| Analog stick size | Standard, Large (fits available space) | Standard |
+| Control visibility | Subtle, Medium, High | Subtle |
+
+Sharper rendering uses a matching Metal output surface and costs more GPU work.
+Widescreen adjusts the camera, HUD and presentation together; both picture shapes
+fit inside the safe area without cropping. Steering response changes the left
+stick's horizontal curve while retaining full steering at full travel. The
+right stick and digital D-pad retain their existing response.
+
+Classic uses Cross to accelerate, Square to brake and R1 to boost. Triggers uses
+R2 to accelerate, L2 to brake and Cross to boost; the touch labels update to match.
+Music/effects volumes and gameplay preferences stay in the game's own options.
+Frame pacing is automatic, while reflections and depth haze retain the mobile
+performance policy. Desktop fullscreen, manual V-sync, display-resolution
+scaling, desktop antialiasing, keyboard and adaptive-trigger options are omitted.
+Leave the app through iOS rather than a Quit Game menu item.
+
+**Reset iOS settings** asks before restoring these defaults; it keeps the disc,
+saved profiles and unrelated game options. Preferences retain the internal
+`pc_settings.ini` filename alongside the virtual memory card for compatibility.
+Unsupported values left by older desktop-style builds are normalized on startup.
 
 ## Performance and limitations
 

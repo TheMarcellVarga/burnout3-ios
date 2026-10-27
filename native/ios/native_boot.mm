@@ -9,6 +9,7 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <cstring>
 #include "ps2host/host.h"
+#include "mobile_settings.h"
 #include "ps2host/run.h"
 #include "ps2host/gs.h"
 #include "ps2host/profile.h"
@@ -81,11 +82,13 @@ static BOOL SupportedDisc(NSURL *url) {
 @property(nonatomic) BOOL importing;
 @property(nonatomic) BOOL showingGame;
 @property(nonatomic) BOOL started;
+@property(nonatomic) NSUInteger settingsFingerprint;
 @property(nonatomic, strong) AnalogStick *leftStick;
 @property(nonatomic, strong) AnalogStick *rightStick;
 @property(nonatomic, strong) NSMutableArray<UIButton *> *padButtons;
 - (void)recordLaunchState:(NSString *)state;
 - (void)saveLaunchScreenshot:(NSString *)state;
+- (void)applyMobileSettings;
 @end
 
 @implementation NativeBootController
@@ -101,9 +104,9 @@ static BOOL SupportedDisc(NSURL *url) {
     if (symbol) config.image = [UIImage systemImageNamed:symbol];
     else config.title = title;
     button.configuration = config;
-    button.alpha = 0.24;
+    button.alpha = applehost::TouchIdleOpacity();
     button.configurationUpdateHandler = ^(UIButton *control) {
-        control.alpha = control.highlighted ? 0.6 : 0.24;
+        control.alpha = control.highlighted ? MAX(0.6, applehost::TouchIdleOpacity()) : applehost::TouchIdleOpacity();
     };
     button.accessibilityLabel = title;
     button.tag = input;
@@ -124,7 +127,7 @@ static BOOL SupportedDisc(NSURL *url) {
         self.view.traitOverrides.preferredContentSizeCategory = UIContentSizeCategoryAccessibilityExtraExtraExtraLarge;
     self.view.multipleTouchEnabled = YES;
     self.frame = [UIImageView new];
-    self.frame.contentMode = UIViewContentModeScaleAspectFit;
+    self.frame.contentMode = UIViewContentModeScaleToFill; // Account for the PS2 pixel aspect ratio.
     self.frame.accessibilityLabel = @"Game output";
     [self.view addSubview:self.frame];
     self.padButtons = [NSMutableArray new];
@@ -154,8 +157,44 @@ static BOOL SupportedDisc(NSURL *url) {
     [self.launcher.importButton addTarget:self action:@selector(importDisc) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:self.launcher];
     applehost::EnableTouchController(true);
+    // In-game choices change on the game thread; apply UIKit controls on the main thread.
+    self.settingsFingerprint = NSUIntegerMax;
+    __weak NativeBootController *weakOwner = self;
+    [NSTimer scheduledTimerWithTimeInterval:0.2 repeats:YES block:^(NSTimer *timer) {
+        NativeBootController *owner = weakOwner;
+        if (!owner) { [timer invalidate]; return; }
+        NSUInteger fingerprint = 0;
+        for (int i = 0; i < applehost::MobileSettingCount; ++i)
+            fingerprint = fingerprint * 4 + applehost::MobileChoiceIndex(i);
+        if (owner.settingsFingerprint != fingerprint) [owner applyMobileSettings];
+    }];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(stopBoot)
         name:UIApplicationDidEnterBackgroundNotification object:nil];
+}
+- (void)applyMobileSettings {
+    NSUInteger fingerprint = 0;
+    for (int i = 0; i < applehost::MobileSettingCount; ++i)
+        fingerprint = fingerprint * 4 + applehost::MobileChoiceIndex(i);
+    self.settingsFingerprint = fingerprint;
+    for (UIButton *button in self.padButtons) [button setNeedsUpdateConfiguration];
+    [self.leftStick refreshVisibility];
+    [self.rightStick refreshVisibility];
+    const BOOL triggers = applehost::MobileChoiceIndex(applehost::RacingButtons) != 0;
+    UIButtonConfiguration *gas = self.padButtons[8].configuration;
+    gas.title = triggers ? @"GAS" : @"R2";
+    self.padButtons[8].configuration = gas;
+    self.padButtons[8].accessibilityLabel = triggers ? @"R2 / accelerate" : @"R2";
+    UIButtonConfiguration *brake = self.padButtons[9].configuration;
+    brake.title = triggers ? @"BRAKE" : @"L2";
+    self.padButtons[9].configuration = brake;
+    self.padButtons[9].accessibilityLabel = triggers ? @"L2 / brake" : @"L2";
+    self.padButtons[7].accessibilityLabel = triggers ? @"Cross / confirm / boost" : @"Cross / confirm / accelerate";
+    self.padButtons[5].accessibilityLabel = triggers ? @"Square" : @"Square / brake";
+    self.padButtons[11].accessibilityLabel = @"R1 / boost";
+#if PS2HOST_VULKAN
+    if (self.gpuView) applehost::SetGpuDisplayScale(self.gpuView, applehost::MobileRenderScale());
+#endif
+    [self.view setNeedsLayout];
 }
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
@@ -163,12 +202,12 @@ static BOOL SupportedDisc(NSURL *url) {
     const CGFloat x = CGRectGetMinX(area), y = CGRectGetMinY(area), w = area.size.width, h = area.size.height;
     const CGFloat side = MIN(44, (h - 160) / 3), gap = 4, pad = side * 3 + gap * 2;
     const CGFloat top = y + 68, right = x + w - pad;
-    self.frame.frame = area;
-    // Match the existing image view's aspect-fit presentation.
-    const CGFloat gameAspect = 640.0 / 448.0;
+    const CGFloat gameAspect = applehost::MobilePictureAspect();
     CGSize gameSize = CGSizeMake(MIN(w, h * gameAspect), MIN(h, w / gameAspect));
-    self.gpuView.frame = CGRectMake(CGRectGetMidX(area) - gameSize.width / 2,
+    CGRect gameRect = CGRectMake(CGRectGetMidX(area) - gameSize.width / 2,
         CGRectGetMidY(area) - gameSize.height / 2, gameSize.width, gameSize.height);
+    self.frame.frame = gameRect;
+    self.gpuView.frame = gameRect;
     self.launcher.frame = self.view.bounds;
     const CGPoint cells[] = {{1,0},{0,1},{2,1},{1,2},{1,0},{0,1},{2,1},{1,2}};
     for (NSUInteger i = 0; i < 8; ++i) {
@@ -179,13 +218,14 @@ static BOOL SupportedDisc(NSURL *url) {
     self.padButtons[9].frame = CGRectMake(x, y + 20, 104, 44);
     self.padButtons[10].frame = CGRectMake(x + 108, y + 20, 56, 44);
     self.padButtons[11].frame = CGRectMake(x + w - 224, y + 20, 56, 44);
-    self.leftStick.frame = CGRectMake(x + 14, y + h - 128, 112, 112);
-    self.rightStick.frame = CGRectMake(x + w - 126, y + h - 128, 112, 112);
+    const CGFloat stick = MIN(applehost::MobileStickSize(), MAX(44, h - (top - y + pad) - 24));
+    self.leftStick.frame = CGRectMake(x + 14, y + h - stick - 16, stick, stick);
+    self.rightStick.frame = CGRectMake(x + w - stick - 14, y + h - stick - 16, stick, stick);
     self.padButtons[12].frame = CGRectMake(CGRectGetMidX(area) - 86, y + h - 44, 80, 44);
     self.padButtons[13].frame = CGRectMake(CGRectGetMidX(area) + 6, y + h - 44, 80, 44);
     NSURL *documents = [NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject;
     NSDictionary *layout = @{@"width": @(self.view.bounds.size.width), @"height": @(self.view.bounds.size.height),
-        @"landscape": @(self.view.bounds.size.width > self.view.bounds.size.height), @"touch_buttons": @(self.padButtons.count), @"analog_sticks": @2, @"idle_opacity": @0.24};
+        @"landscape": @(self.view.bounds.size.width > self.view.bounds.size.height), @"touch_buttons": @(self.padButtons.count), @"analog_sticks": @2, @"idle_opacity": @(applehost::TouchIdleOpacity())};
     [[NSJSONSerialization dataWithJSONObject:layout options:0 error:nil]
         writeToURL:[documents URLByAppendingPathComponent:@"native-layout.json"] atomically:YES];
 }
@@ -475,8 +515,10 @@ static BOOL SupportedDisc(NSURL *url) {
                 options.memcard = card_path;
                 options.audio = true;
                 options.vu_fast = mobile_quality;
-                if (mobile_quality || [NSProcessInfo.processInfo.arguments containsObject:@"--race-no-blur"])
+                if ([NSProcessInfo.processInfo.arguments containsObject:@"--race-no-blur"])
                     options.settings.push_back("blur=off");
+                else if (!mobile_quality)
+                    options.settings.push_back("blur=original");
 #if PS2HOST_VULKAN
                 options.gpu = ![NSProcessInfo.processInfo.arguments containsObject:@"--software-renderer"];
                 options.gpu_show = options.gpu;

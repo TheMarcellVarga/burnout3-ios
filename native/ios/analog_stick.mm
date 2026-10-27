@@ -1,5 +1,6 @@
 #import "analog_stick.h"
 #include "apple_touch_input.h"
+#include "mobile_settings.h"
 #include <cmath>
 
 @interface AnalogStick ()
@@ -12,7 +13,7 @@
     if ((self = [super initWithFrame:frame])) {
         self.backgroundColor = UIColor.clearColor;
         self.opaque = NO;
-        self.alpha = 0.24;
+        self.alpha = applehost::TouchIdleOpacity();
         self.exclusiveTouch = NO;
         self.thumb = [UIView new];
         self.thumb.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.35];
@@ -24,6 +25,9 @@
         self.accessibilityTraits = UIAccessibilityTraitAdjustable;
     }
     return self;
+}
+- (void)refreshVisibility {
+    if (!self.tracking) self.alpha = applehost::TouchIdleOpacity();
 }
 - (void)drawRect:(CGRect)rect {
     [super drawRect:rect];
@@ -65,7 +69,7 @@
     CGFloat length = hypot(point.x, point.y);
     if (length > 1) { point.x /= length; point.y /= length; }
     _position = point;
-    applehost::SetTouchStick((unsigned)self.stickIndex, float(point.x), float(point.y));
+    applehost::SetTouchStick((unsigned)self.stickIndex, (self.stickIndex == 0 ? applehost::MobileSteering(float(point.x)) : float(point.x)), float(point.y));
     self.accessibilityValue = [NSString stringWithFormat:@"Horizontal %.0f percent, vertical %.0f percent", point.x * 100, point.y * 100];
     [self setNeedsLayout];
     [self setNeedsDisplay];
@@ -81,7 +85,7 @@
 - (BOOL)beginTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
     [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.1
         delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-        animations:^{ self.alpha = 0.6; } completion:nil];
+        animations:^{ self.alpha = MAX(0.6, applehost::TouchIdleOpacity()); } completion:nil];
     [self trackTouch:touch];
     return YES;
 }
@@ -115,7 +119,7 @@
     }
     [UIView animateWithDuration:spring ? 0.18 : 0 delay:0
         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-        animations:^{ self.alpha = 0.24; } completion:nil];
+        animations:^{ self.alpha = applehost::TouchIdleOpacity(); } completion:nil];
 }
 - (void)accessibilityIncrement { [self setPosition:CGPointMake(MIN(1, self.position.x + 0.25), self.position.y)]; }
 - (void)accessibilityDecrement { [self setPosition:CGPointMake(MAX(-1, self.position.x - 0.25), self.position.y)]; }

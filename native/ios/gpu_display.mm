@@ -4,6 +4,7 @@
 #include "ps2gpu/display.h"
 #include "gpu_internal.h"
 #include "ps2host/run.h"
+#include "mobile_settings.h"
 #import <MoltenVK/mvk_deprecated_api.h>
 #include <memory>
 #include <cstdio>
@@ -47,8 +48,9 @@ public:
         layer_.pixelFormat = MTLPixelFormatBGRA8Unorm;
         layer_.framebufferOnly = YES;
         layer_.maximumDrawableCount = 3;
-        // Fixed game-size output; Core Animation scales and letterboxes the view.
-        layer_.drawableSize = CGSizeMake(640, 448);
+        // Match the render scale so 2x detail reaches the screen.
+        const unsigned scale = applehost::MobileRenderScale();
+        layer_.drawableSize = CGSizeMake(640 * scale, 448 * scale);
         NSString *source = @"#include <metal_stdlib>\nusing namespace metal;\n"
             "struct V { float4 p [[position]]; float2 uv; };\n"
             "vertex V v(uint i [[vertex_id]]) { float2 p=float2((i<<1)&2,i&2); return {float4(p*float2(2,-2)+float2(-1,1),0,1),p}; }\n"
@@ -183,6 +185,12 @@ std::unique_ptr<MetalDisplay> display;
 }
 namespace applehost {
 void SetGpuDisplay(ps2gpu::Display*);
+void SetGpuDisplayScale(UIView *view, unsigned scale) {
+    scale = std::clamp(scale, 1u, 2u);
+    CAMetalLayer *layer = (CAMetalLayer *)view.layer;
+    const CGSize size = CGSizeMake(640 * scale, 448 * scale);
+    if (!CGSizeEqualToSize(layer.drawableSize, size)) layer.drawableSize = size;
+}
 UIView *InstallGpuDisplay(UIView *parent, std::function<void()> first_frame) {
     NativeMetalView *view = [[NativeMetalView alloc] initWithFrame:parent.bounds];
     view.userInteractionEnabled = NO;

@@ -1,0 +1,19 @@
+--- a/host/src/host.cpp
++++ b/host/src/host.cpp
+@@ -1,3 +1,6 @@
++#if BURNOUT_IOS
++#include "mobile_settings.h"
++#endif
+ #include "ps2host/host.h"
+ 
+ #ifdef _WIN32
+@@ -658,6 +661,9 @@
+ #endif
+         }
+         LoadSettings((where / "pc_settings.ini").string());
++#if BURNOUT_IOS
++        applehost::NormalizeMobileSettings();
++#endif
+     }
+     g_fast_disc = options.fast_disc || (!options.virtual_time && SettingOn("fast_loading", g_fast_loading_default));
+     if (g_fast_disc) std::fprintf(stderr, "[host] disc reads fast (no drive time)\n");
