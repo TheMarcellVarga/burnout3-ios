@@ -335,7 +335,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     enable_language(OBJC)
     target_sources(burnout3 PRIVATE ${BO3_ROOT}/ios/main.m ${BO3_ROOT}/ios/touch_overlay.m ${BO3_ROOT}/ios/scene_delegate.m
         ${BO3_ROOT}/ios/mobile_shell.m ${BO3_ROOT}/ios/mobile_preferences.m
-        ${BO3_ROOT}/ios/session_guard.c)
+        ${BO3_ROOT}/ios/session_guard.c ${BO3_ROOT}/ios/profile.m)
     set(_bo3_ios_resources ${BO3_ROOT}/config/disc/ntsc-u-retail.manifest ${BO3_ROOT}/LICENSE ${BO3_ROOT}/THIRD_PARTY_NOTICES.md)
     set_source_files_properties(${_bo3_ios_resources} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     target_sources(burnout3 PRIVATE ${_bo3_ios_resources})

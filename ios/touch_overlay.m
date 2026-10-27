@@ -70,8 +70,21 @@
     (void)clock;
     xbox_touch_draw controls[XBOX_TOUCH_MAX_CONTROLS];
     int count=xbox_InputTouchDrawList(controls,XBOX_TOUCH_MAX_CONTROLS);
+    BO3ProfileTick(NO);
     float opacity=xbox_InputTouchOpacity();
+    /* Poll context at 60 Hz; repaint only when fingers/layout/visibility
+     * change. Core Animation runs the release spring independently. */
+    if(_hasDrawState && count==_lastCount && opacity==_lastOpacity &&
+        !memcmp(controls,_lastControls,(size_t)count*sizeof(*controls))) return;
     CGRect dirty=self.bounds;
+    if(_hasDrawState && count==_lastCount && opacity==_lastOpacity) {
+        dirty=CGRectNull;
+        for(int i=0;i<count;i++) if(memcmp(&controls[i],&_lastControls[i],sizeof(*controls))) {
+            xbox_touch_draw a=controls[i], b=_lastControls[i];
+            dirty=CGRectUnion(dirty,CGRectMake(a.x-a.r-3,a.y-a.r-3,2*a.r+6,2*a.r+6));
+            dirty=CGRectUnion(dirty,CGRectMake(b.x-b.r-3,b.y-b.r-3,2*b.r+6,2*b.r+6));
+        }
+    }
     memcpy(_lastControls,controls,(size_t)count*sizeof(*controls));
     _lastCount=count; _lastOpacity=opacity; _hasDrawState=YES;
     BOOL driving=NO;
@@ -120,6 +133,7 @@
     self.settingsButton.frame=CGRectMake(insets.left+130,insets.top+12,44,44);
 }
 - (void)drawRect:(CGRect)rect {
+    BO3ProfileTick(YES);
     CGFloat alpha = _lastOpacity;
     static NSDictionary *tags;
     if(!tags) tags=[@{@"GAS":@"RT",@"BRAKE":@"LT",@"BOOST":@"A",@"BREAKER":@"B",@"LOOK":@"X",@"VIEW":@"Y"} retain];
@@ -204,6 +218,7 @@ void bo3_ios_attach_touch(void) {
         return;
     }
     BO3ApplyTouchPreferences();
+    BO3ProfileStart();
     TakedawnTouchView *view = [[TakedawnTouchView alloc] initWithFrame:host.bounds];
     [host addSubview:view];
     [view release];

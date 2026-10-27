@@ -33,6 +33,10 @@ int SDL_main(int argc, char **argv)
             setenv("RECOMP_LOG_DIAG", "0", 1);
         setenv("RECOMP_PB_BACKEND", "metal", 1);
         setenv("RECOMP_PRESENT_VSYNC", "1", 1);
+        /* Short phone comparison: 4 ms retained ~16.8 ms p95 guest flips
+         * while reducing menu CPU work versus the inherited 8 ms lead.
+         * Explicit diagnostic overrides still win. */
+        setenv("RECOMP_PRESENT_SPIN_LEAD", "4", 0);
         setenv("RECOMP_WINDOW_SCALE", "1", 1);
         setenv("SDL_IOS_ORIENTATIONS", "LandscapeLeft LandscapeRight", 1);
         SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
