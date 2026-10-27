@@ -63,16 +63,33 @@ extern void sub_001D2879(void);          /* the title's heap: (size, tag), stdca
 #define ME_ITEM_SIZE  8u
 #define ME_HEAP_TAG   0x54414B45u     /* "TAKE" */
 
+#ifdef XBOXRECOMP_IOS
+extern void bo3_ios_request_settings(void); /* queues UIKit work on the main thread */
+static const char k_label[] = "IOS SETTINGS";
+#else
 static const char k_label[] = "TAKEDAWN SETTINGS";
+#endif
 static uint32_t s_block;              /* 5 items, then the label */
 
 static int me_on(void)
 {
-#ifdef XBOXRECOMP_HAVE_OVERLAY
+#if defined(XBOXRECOMP_IOS)
+    const char *v = recomp_env(RENV_MENU_ENTRY);
+    return (!v || !*v || *v != '0') && !recomp_env_on(RENV_HEADLESS);
+#elif defined(XBOXRECOMP_HAVE_OVERLAY)
     const char *v = recomp_env(RENV_MENU_ENTRY);
     return (!v || !*v || *v != '0') && xbox_OverlayAvailable();
 #else
     return 0;
+#endif
+}
+
+static void me_open(void)
+{
+#ifdef XBOXRECOMP_IOS
+    bo3_ios_request_settings();
+#elif defined(XBOXRECOMP_HAVE_OVERLAY)
+    xbox_OverlayRequestOpen();
 #endif
 }
 
@@ -113,7 +130,7 @@ static void me_items(void)
     ME_M32(b + ME_N * ME_ITEM_SIZE + 4) = 0;
     ME_M16(ME_COUNT) = ME_N + 1;
     g_eax = b;                          /* pushed next as the widget's items */
-    fprintf(stderr, "[MENU] Settings: TAKEDAWN SETTINGS listed\n");
+    fprintf(stderr, "[MENU] Settings: %s listed\n",k_label);
 }
 
 /* ── the pause menu ─────────────────────────────────────────────────
@@ -163,7 +180,7 @@ static void pe_items(void)
     ME_M32(PE_ITEMS + q * ME_ITEM_SIZE + 4) = 0;
     ME_M32(PE_CODES + q * 4) = PE_OURS;
     ME_M16(PE_COUNT) = (uint16_t)(n + 1);
-    fprintf(stderr, "[MENU] pause: TAKEDAWN SETTINGS listed\n");
+    fprintf(stderr, "[MENU] pause: %s listed\n",k_label);
 }
 
 static void pe_select(void)
@@ -175,10 +192,7 @@ static void pe_select(void)
     i = ME_M16(PE_CURSOR);
     if (i >= PE_MAX || ME_M32(PE_CODES + i * 4) != PE_OURS)
         return;
-#ifdef XBOXRECOMP_HAVE_OVERLAY
-    if (xbox_OverlayRequestOpen())
-        fprintf(stderr, "[MENU] pause: TAKEDAWN SETTINGS: opening the overlay\n");
-#endif
+    me_open();
 }
 
 static void me_select(void)
@@ -189,10 +203,7 @@ static void me_select(void)
     /* Whatever happens, the title must not take this A: its exit would
      * look the fifth line up in a four-entry table. */
     g_eax &= ~0xFFu;
-#ifdef XBOXRECOMP_HAVE_OVERLAY
-    if (xbox_OverlayRequestOpen())
-        fprintf(stderr, "[MENU] TAKEDAWN SETTINGS: opening the overlay\n");
-#endif
+    me_open();
 }
 
 void bo3_menu_entry_start(void)
