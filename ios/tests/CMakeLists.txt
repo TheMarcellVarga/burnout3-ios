@@ -6,6 +6,9 @@ add_subdirectory(${XBOXRECOMP_DIR}/src/platform platform)
 add_compile_options("SHELL:-include \"${XBOXRECOMP_DIR}/src/platform/xr_log.h\"")
 add_subdirectory(${XBOXRECOMP_DIR}/tests/input_touch input_touch)
 enable_testing()
+add_executable(ios_session_guard session_guard_test.c ../session_guard.c)
+target_include_directories(ios_session_guard PRIVATE ..)
+add_test(NAME ios_session_guard COMMAND ios_session_guard)
 add_executable(ios_hybrid_touch hybrid_touch_test.c ${XBOXRECOMP_DIR}/src/input/touch_pad.c)
 target_include_directories(ios_hybrid_touch PRIVATE ${XBOXRECOMP_DIR}/src)
 target_link_libraries(ios_hybrid_touch PRIVATE platform m)
@@ -17,6 +20,10 @@ add_subdirectory(${XBOXRECOMP_DIR}/tests/mmio_decode_a64 mmio_decode_a64)
 # Validate the shader emitters with the development Mac's Metal compiler.
 # This does not establish iPhone GPU compatibility or rendering correctness.
 enable_language(OBJC)
+add_executable(ios_mobile_preferences mobile_preferences_test.m ../mobile_preferences.m)
+target_include_directories(ios_mobile_preferences PRIVATE ..)
+target_link_libraries(ios_mobile_preferences PRIVATE "-framework Foundation")
+add_test(NAME ios_mobile_preferences COMMAND ios_mobile_preferences)
 add_library(xbox_d3d8 STATIC
     ${XBOXRECOMP_DIR}/src/d3d/d3d8_vsh_parse.c
     ${XBOXRECOMP_DIR}/src/d3d/d3d8_combiners_parse.c

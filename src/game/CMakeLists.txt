@@ -52,7 +52,7 @@ add_executable(burnout3
     scoreboard.c
     unlockall.c
     glyphs.c
-    shaderbuild.c
+    $<$<NOT:$<STREQUAL:${CMAKE_SYSTEM_NAME},iOS>>:shaderbuild.c>
     soundtrack.c
     dsound_notify.c
     soundbank.c
@@ -329,3 +329,31 @@ set_target_properties(burnout3 PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${BO3_BIN_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG   "${BO3_BIN_DIR}"
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    find_package(SDL2 REQUIRED)
+    enable_language(OBJC)
+    target_sources(burnout3 PRIVATE ${BO3_ROOT}/ios/main.m ${BO3_ROOT}/ios/touch_overlay.m ${BO3_ROOT}/ios/scene_delegate.m
+        ${BO3_ROOT}/ios/mobile_shell.m ${BO3_ROOT}/ios/mobile_preferences.m
+        ${BO3_ROOT}/ios/session_guard.c)
+    set(_bo3_ios_resources ${BO3_ROOT}/config/disc/ntsc-u-retail.manifest ${BO3_ROOT}/LICENSE ${BO3_ROOT}/THIRD_PARTY_NOTICES.md)
+    set_source_files_properties(${_bo3_ios_resources} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    target_sources(burnout3 PRIVATE ${_bo3_ios_resources})
+    set(_bo3_ios_licenses ${XBOXRECOMP_DIR}/NOTICE ${XBOXRECOMP_DIR}/LICENSES/LGPL-2.1.txt
+        ${XBOXRECOMP_DIR}/LICENSES/ADPCM-XQ-BSD-3-Clause.txt ${BO3_ROOT}/tools/release/licenses/SDL2-Zlib.txt)
+    set_source_files_properties(${_bo3_ios_licenses} PROPERTIES MACOSX_PACKAGE_LOCATION Resources/licenses)
+    target_sources(burnout3 PRIVATE ${_bo3_ios_licenses})
+    set_source_files_properties(${BO3_ROOT}/ios/Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    target_sources(burnout3 PRIVATE ${BO3_ROOT}/ios/Assets.xcassets)
+    target_include_directories(burnout3 PRIVATE "${BO3_ROOT}/local/deps/SDL2-2.32.10/src/video/uikit")
+    set_property(SOURCE main.c APPEND PROPERTY COMPILE_DEFINITIONS main=bo3_game_main)
+    set_target_properties(burnout3 PROPERTIES
+        MACOSX_BUNDLE TRUE
+        OUTPUT_NAME TakedawnIOS
+        MACOSX_BUNDLE_INFO_PLIST "${BO3_ROOT}/ios/Info.plist"
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER dev.burnout3.takedawn-ios
+        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon
+        XCODE_ATTRIBUTE_CODE_SIGN_STYLE Automatic)
+    target_link_libraries(burnout3 PRIVATE SDL2::SDL2main "-framework UIKit" "-framework UniformTypeIdentifiers")
+endif()
