@@ -91,6 +91,193 @@ index d0f38d6..4fb3147 100644
  #pragma clang diagnostic pop
      [b endEncoding];
  }
+diff --git a/src/input/touch_pad.c b/src/input/touch_pad.c
+index 4b789c0..9f3bab9 100644
+--- a/src/input/touch_pad.c
++++ b/src/input/touch_pad.c
+@@ -59,6 +59,7 @@ static struct finger {
+     int glide;                  /* went down on a button: may slide onto another */
+     float x, y;                 /* now */
+     float cx, cy;               /* STICK: the base, where the finger landed */
++    float bx, by;               /* hybrid: visible base, independent of pickup offset */
+     unsigned read0;             /* g_reads when it went down */
+     int lift;                   /* up, held on until the title has read the press twice */
+ } g_f[MAX_FINGERS];
+@@ -74,6 +75,7 @@ static int   g_dirty = 1;       /* the screen or a setting changed: rebuild */
+ static volatile int   g_mode = XBOX_TOUCH_OFF;
+ static volatile float g_opacity = 0.5f, g_scale = 1.0f;
+ static volatile int   g_autogas;
++static int g_hybrid, g_response;
+ static int (*g_driving_fn)(void);
+ static int g_hidden;            /* auto: a controller was used since the last touch */
+ static volatile int g_in_use;   /* the touch, not a controller, was the last used */
+@@ -111,6 +113,12 @@ void xbox_InputTouchSetScale(float s)
+ }
+ 
+ void xbox_InputTouchSetAutoGas(int on) { g_autogas = on != 0; }
++void xbox_InputTouchSetHybrid(int on) {
++    if(g_hybrid != (on != 0)) { xbox_InputTouchReleaseAll(); g_hybrid=on != 0; g_dirty=1; }
++}
++void xbox_InputTouchSetSteeringResponse(int response) {
++    g_response=response>=0 && response<=2 ? response : 0;
++}
+ 
+ void xbox_InputTouchSetDrivingHook(int (*driving)(void)) { g_driving_fn = driving; }
+ 
+@@ -194,7 +202,8 @@ static void build(int driving)
+     /* The height the sizes are fractions of: the screen's, at most 90 mm. */
+     const float cap = g_dpi > 0.0f ? 90.0f * g_dpi / 25.4f : g_h;
+     const float base = g_h < cap ? g_h : cap;
+-    const float s = base * g_scale;
++    const float requested = base * g_scale;
++    const float s = g_hybrid && requested > g_h * 1.1f ? g_h * 1.1f : requested;
+     const float m = 0.035f * base;
+     const float xl = g_in[0] + m, yt = g_in[1] + m;
+     const float xr = g_w - g_in[2] - m, yb = g_h - g_in[3] - m;
+@@ -210,12 +219,38 @@ static void build(int driving)
+ #define V(v) ((v) * g_h)
+     /* Pause and the settings menu: top, left of the score board, right of
+      * POS (and of where POS is in a 4:3 picture). */
+-    add(C_PAUSE, XBOX_TOUCH_KIND_BUTTON, g_w * 0.5f - V(0.40f), yt + R(0.065f), R(0.055f),
++    const float top_r=g_hybrid ? fmaxf(22.0f,R(0.055f)) : R(0.055f);
++    const float top_y=yt+fmaxf(top_r,R(0.065f));
++    add(C_PAUSE, XBOX_TOUCH_KIND_BUTTON, g_w * 0.5f - V(0.40f), top_y, top_r,
+         XBOX_GAMEPAD_START, 0, NULL, 0, XBOX_TOUCH_ICON_PAUSE);
+-    add(C_MENU, XBOX_TOUCH_KIND_BUTTON, g_w * 0.5f - V(0.27f), yt + R(0.065f), R(0.055f),
++    add(C_MENU, XBOX_TOUCH_KIND_BUTTON, g_w * 0.5f - V(0.40f) + (g_hybrid ? fmaxf(48.0f,V(0.13f)) : V(0.13f)), top_y, top_r,
+         0, 0, NULL, 0, XBOX_TOUCH_ICON_MENU);
+ 
+-    if (driving) {
++    if (driving && g_hybrid) {
++        /* One thumb rolls between throttle, boost and brake. Every secondary
++         * target remains at least 44 points across when iOS supplies points. */
++        const float gas_y=V(0.69f);
++        const float small=fmaxf(22.0f,R(0.052f));
++        add(C_GAS,XBOX_TOUCH_KIND_BUTTON,xr-R(0.13f),gas_y,R(0.10f),
++            0,AN(XBOX_BUTTON_RTRIGGER),"GAS",RGB_GREEN,0);
++        add(C_BOOST,XBOX_TOUCH_KIND_BUTTON,xr-R(0.13f),gas_y-R(0.205f),R(0.085f),
++            0,AN(XBOX_BUTTON_A)|AN(XBOX_BUTTON_RTRIGGER),"BOOST",RGB_ORANGE,0);
++        add(C_BRAKE,XBOX_TOUCH_KIND_BUTTON,xr-R(0.37f),gas_y+R(0.03f),R(0.075f),
++            0,AN(XBOX_BUTTON_LTRIGGER),"BRAKE",RGB_RED,0);
++        add(C_BREAKER,XBOX_TOUCH_KIND_BUTTON,xr-R(0.37f),gas_y-R(0.265f),fmaxf(22.0f,R(0.06f)),
++            0,AN(XBOX_BUTTON_B),"BREAKER",0,0);
++        const float secondary_y=fmaxf(V(0.26f),gas_y-R(0.43f));
++        add(C_LOOK,XBOX_TOUCH_KIND_BUTTON,xr-R(0.37f),secondary_y,small,
++            0,AN(XBOX_BUTTON_X),"LOOK",0,0);
++        add(C_VIEW,XBOX_TOUCH_KIND_BUTTON,xr-R(0.13f),secondary_y,small,
++            0,AN(XBOX_BUTTON_Y),"VIEW",0,0);
++        g_stick_r=R(0.145f);
++        g_stick_rest_x=xl+R(0.21f); g_stick_rest_y=V(0.67f);
++        g_stick_x0=xl; g_stick_x1=g_w*0.5f;
++        g_stick_y0=yt+fmaxf(44.0f,R(0.16f)); g_stick_y1=g_h;
++        add(C_STICK,XBOX_TOUCH_KIND_STICK,g_stick_rest_x,g_stick_rest_y,g_stick_r,
++            0,0,NULL,0,0);
++    } else if (driving) {
+         /* The right cluster between LAP (top 0.19 H) and the speedometer
+          * (bottom 0.15 H). */
+         add(C_GAS, XBOX_TOUCH_KIND_BUTTON, xr - R(0.15f), V(0.70f), R(0.12f),
+@@ -318,7 +353,8 @@ static WORD dpad_dir(const ctl *c, float x, float y, float *ux, float *uy)
+  * small dead centre. */
+ static void stick_vec(const struct finger *f, float *vx, float *vy)
+ {
+-    float dx = (f->x - f->cx) / g_stick_r, dy = (f->y - f->cy) / g_stick_r;
++    const float travel=g_stick_r*(g_hybrid ? 0.65f : 1.0f);
++    float dx = (f->x - f->cx) / travel, dy = (f->y - f->cy) / travel;
+     float mag = sqrtf(dx * dx + dy * dy);
+     *vx = *vy = 0.0f;
+     if (mag < 0.08f)
+@@ -328,6 +364,9 @@ static void stick_vec(const struct finger *f, float *vx, float *vy)
+         k = (k - 0.08f) / 0.92f / mag;
+         *vx = dx * k;
+         *vy = dy * k;
++        /* A static response curve has no input delay or release inertia. */
++        const float exponent=g_response==1 ? 1.5f : g_response==2 ? 0.65f : 1.0f;
++        *vx=copysignf(powf(fabsf(*vx),exponent),*vx);
+     }
+ }
+ 
+@@ -483,6 +522,16 @@ void xbox_InputTouchFinger(int what, int64_t id, float x, float y)
+             f->ctl = C_STICK;
+             f->cx = x < g_stick_x0 + r ? g_stick_x0 + r : x;
+             f->cy = y > g_h - g_in[3] - r ? g_h - g_in[3] - r : y;
++            if(g_hybrid) {
++                for(int i=0;i<MAX_FINGERS;i++)
++                    if(&g_f[i]!=f && g_f[i].used && g_f[i].ctl==C_STICK) f->ctl=C_NONE;
++                f->bx=f->cx; f->by=f->cy;
++                if(dist(x,y,g_stick_rest_x,g_stick_rest_y)<=r*1.1f)
++                    { f->bx=g_stick_rest_x; f->by=g_stick_rest_y; }
++                /* Pick up at neutral even if the thumb lands off-center.
++                 * Movement after pickup, not placement error, steers the car. */
++                f->cx=x; f->cy=y;
++            }
+         }
+     } else if (!f) {
+         return;
+@@ -508,7 +557,7 @@ void xbox_InputTouchFinger(int what, int64_t id, float x, float y)
+         /* A tap shorter than two of the title's reads would be missed (it
+          * polls once a frame): the press is held until it has been read. */
+         const ctl *c = f->ctl != C_NONE ? find(f->ctl) : NULL;
+-        if (c && c->kind != XBOX_TOUCH_KIND_STICK && g_reads - f->read0 < 2)
++        if (what!=XBOX_TOUCH_CANCEL && c && c->kind != XBOX_TOUCH_KIND_STICK && g_reads - f->read0 < 2)
+             f->lift = 1;
+         else
+             f->used = 0;
+@@ -569,14 +618,15 @@ int xbox_InputTouchDrawList(xbox_touch_draw *out, int max)
+             if (c->kind == XBOX_TOUCH_KIND_STICK) {
+                 float dx = f->x - f->cx, dy = f->y - f->cy;
+                 float mag = sqrtf(dx * dx + dy * dy);
+-                d->x = f->cx;
+-                d->y = f->cy;
+-                if (mag > c->r) {
+-                    dx *= c->r / mag;
+-                    dy *= c->r / mag;
++                d->x = g_hybrid ? f->bx : f->cx;
++                d->y = g_hybrid ? f->by : f->cy;
++                const float travel=c->r*(g_hybrid ? 0.65f : 1.0f);
++                if (mag > travel) {
++                    dx *= travel / mag;
++                    dy *= travel / mag;
+                 }
+-                d->kx = f->cx + dx;
+-                d->ky = f->cy + dy;
++                d->kx = d->x + dx;
++                d->ky = d->y + dy;
+             } else if (c->kind == XBOX_TOUCH_KIND_DPAD) {
+                 float ux, uy;
+                 if (!dpad_dir(c, f->x, f->y, &ux, &uy))
+@@ -605,6 +655,7 @@ void xbox_InputTouchReset(void)
+     g_opacity = 0.5f;
+     g_scale = 1.0f;
+     g_autogas = 0;
++    g_hybrid = g_response = 0;
+     g_driving_fn = NULL;
+     g_hidden = 0;
+     g_in_use = 0;
+diff --git a/src/input/touch_pad.h b/src/input/touch_pad.h
+index 0adc1ea..33f66b7 100644
+--- a/src/input/touch_pad.h
++++ b/src/input/touch_pad.h
+@@ -62,6 +62,11 @@ int  xbox_InputTouchMode(void);
+ void xbox_InputTouchSetOpacity(float opacity);
+ void xbox_InputTouchSetScale(float scale);
+ void xbox_InputTouchSetAutoGas(int on);
++/* iOS hybrid: compact thumb cluster and an anchored stick near its rest
++ * position, floating when touched farther away. Off preserves upstream layout.
++ * Response: 0 standard, 1 gentle, 2 quick; applies to touch steering only. */
++void xbox_InputTouchSetHybrid(int on);
++void xbox_InputTouchSetSteeringResponse(int response);
+ /* The title is taking driving input now (main thread; may be NULL). */
+ void xbox_InputTouchSetDrivingHook(int (*driving)(void));
+ 
+@@ -80,7 +85,7 @@ void xbox_InputTouchSetInsets(float left, float top, float right, float bottom);
+ void xbox_InputTouchReadInsets(void);
+ 
+ /* A finger, in pixels. Main thread. */
+-enum { XBOX_TOUCH_DOWN, XBOX_TOUCH_MOVE, XBOX_TOUCH_UP };
++enum { XBOX_TOUCH_DOWN, XBOX_TOUCH_MOVE, XBOX_TOUCH_UP, XBOX_TOUCH_CANCEL };
+ void xbox_InputTouchFinger(int what, int64_t id, float x, float y);
+ /* Every finger let go (the overlay opened, the window lost the focus). */
+ void xbox_InputTouchReleaseAll(void);
 diff --git a/src/kernel/CMakeLists.txt b/src/kernel/CMakeLists.txt
 index 6989a3f..bd451e6 100644
 --- a/src/kernel/CMakeLists.txt

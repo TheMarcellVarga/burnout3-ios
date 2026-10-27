@@ -6,6 +6,10 @@ add_subdirectory(${XBOXRECOMP_DIR}/src/platform platform)
 add_compile_options("SHELL:-include \"${XBOXRECOMP_DIR}/src/platform/xr_log.h\"")
 add_subdirectory(${XBOXRECOMP_DIR}/tests/input_touch input_touch)
 enable_testing()
+add_executable(ios_hybrid_touch hybrid_touch_test.c ${XBOXRECOMP_DIR}/src/input/touch_pad.c)
+target_include_directories(ios_hybrid_touch PRIVATE ${XBOXRECOMP_DIR}/src)
+target_link_libraries(ios_hybrid_touch PRIVATE platform m)
+add_test(NAME ios_hybrid_touch COMMAND ios_hybrid_touch)
 
 # Exercise the ARM64 load/store fault decoder used by the Xbox MMIO runtime.
 add_subdirectory(${XBOXRECOMP_DIR}/tests/mmio_decode_a64 mmio_decode_a64)
