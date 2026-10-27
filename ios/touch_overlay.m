@@ -37,7 +37,7 @@
         [self addSubview:self.settingsButton];
         self.stickKnob=[[[UIView alloc] initWithFrame:CGRectZero] autorelease];
         self.stickKnob.userInteractionEnabled=NO;
-        self.stickKnob.backgroundColor=[UIColor colorWithWhite:1 alpha:0.45];
+        self.stickKnob.backgroundColor=[UIColor colorWithWhite:1 alpha:0.35];
         self.stickKnob.layer.borderWidth=1;
         [self addSubview:self.stickKnob];
         self.clock = [CADisplayLink displayLinkWithTarget:self selector:@selector(redraw:)];
@@ -94,8 +94,8 @@
         CGFloat radius=stick.r*0.35;
         self.stickKnob.bounds=CGRectMake(0,0,2*radius,2*radius);
         self.stickKnob.layer.cornerRadius=radius;
-        self.stickKnob.layer.borderColor=[UIColor colorWithWhite:1 alpha:stick.pressed ? 0.95 : opacity].CGColor;
-        self.stickKnob.alpha=stick.pressed ? 0.9 : MAX(0.35,opacity);
+        self.stickKnob.layer.borderColor=[UIColor colorWithWhite:1 alpha:0.6].CGColor;
+        self.stickKnob.alpha=stick.pressed ? MAX(0.6,opacity) : opacity;
         CGPoint from=self.stickKnob.layer.presentationLayer ? self.stickKnob.layer.presentationLayer.position : self.stickKnob.center;
         CGPoint to=CGPointMake(stick.kx,stick.ky);
         BOOL returning=self.stickWasPressed && !stick.pressed;
@@ -135,8 +135,6 @@
 - (void)drawRect:(CGRect)rect {
     BO3ProfileTick(YES);
     CGFloat alpha = _lastOpacity;
-    static NSDictionary *tags;
-    if(!tags) tags=[@{@"GAS":@"RT",@"BRAKE":@"LT",@"BOOST":@"A",@"BREAKER":@"B",@"LOOK":@"X",@"VIEW":@"Y"} retain];
     for (int i = 0; i < _lastCount; ++i) {
         xbox_touch_draw c = _lastControls[i];
         if (c.icon == XBOX_TOUCH_ICON_MENU) continue; /* accessible UIKit button above */
@@ -145,9 +143,9 @@
         if(!CGRectIntersectsRect(rect,CGRectInset(bounds,-3,-3))) continue;
         /* Match the PS2 overlay: faint at rest, clear while held. The
          * visibility preference applies to labels as well as the rings. */
-        CGFloat visibility=c.pressed ? 0.95 : MAX(0.65,alpha);
-        [[UIColor colorWithWhite:0.08 alpha:c.pressed ? 0.65 : alpha*0.5] setFill];
-        [[UIColor colorWithWhite:1 alpha:c.pressed ? 0.95 : alpha] setStroke];
+        CGFloat visibility=c.pressed ? MAX(0.6,alpha) : alpha;
+        [[UIColor colorWithWhite:0.08 alpha:visibility*0.2] setFill];
+        [[UIColor colorWithWhite:1 alpha:visibility*0.6] setStroke];
         UIBezierPath *circle = [UIBezierPath bezierPathWithOvalInRect:bounds];
         circle.lineWidth = c.pressed ? 2.5 : 1.5;
         [circle fill]; [circle stroke];
@@ -163,7 +161,7 @@
             for(int k=0;k<4;k++) {
                 CGPoint d=directions[k];
                 CGFloat strength=MAX(0,d.x*(c.kx-c.x)+d.y*(c.ky-c.y))/MAX(1,r*0.65);
-                [[UIColor colorWithWhite:1 alpha:MIN(1,alpha+strength*0.6)] setStroke];
+                [[UIColor colorWithWhite:1 alpha:visibility*(0.25+0.75*MIN(1,strength))] setStroke];
                 CGPoint tip=CGPointMake(c.x+d.x*r*0.84,c.y+d.y*r*0.84);
                 UIBezierPath *tick=[UIBezierPath bezierPath];
                 [tick moveToPoint:CGPointMake(tip.x-d.x*4-d.y*3,tip.y-d.y*4+d.x*3)];
@@ -172,19 +170,13 @@
                 tick.lineWidth=1.5; tick.lineCapStyle=kCGLineCapRound; [tick stroke];
             }
         } else {
-            NSString *tag=tags[label];
             if([label isEqualToString:@"BREAKER"]) label=@"CRASH";
             NSDictionary *attributes = @{
                 NSFontAttributeName:[UIFont systemFontOfSize:MAX(11,MIN(16,r*0.36)) weight:UIFontWeightSemibold],
                 NSForegroundColorAttributeName:[UIColor colorWithWhite:1 alpha:visibility]
             };
             CGSize size = [label sizeWithAttributes:attributes];
-            [label drawAtPoint:CGPointMake(c.x-size.width/2,c.y-size.height/2+(tag ? 7 : 0)) withAttributes:attributes];
-            if(tag) {
-                NSDictionary *badge=@{NSFontAttributeName:[UIFont systemFontOfSize:11 weight:UIFontWeightBold],NSForegroundColorAttributeName:[UIColor colorWithWhite:1 alpha:0.8]};
-                CGSize badgeSize=[tag sizeWithAttributes:badge];
-                [tag drawAtPoint:CGPointMake(c.x-badgeSize.width/2,c.y-17) withAttributes:badge];
-            }
+            [label drawAtPoint:CGPointMake(c.x-size.width/2,c.y-size.height/2) withAttributes:attributes];
 
         }
     }
