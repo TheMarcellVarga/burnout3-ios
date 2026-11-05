@@ -50,29 +50,13 @@ cp "$QT_WIN/plugins/platforms/qwindows.dll" "$QT_WIN/plugins/platforms/qoffscree
 cp "$QT_WIN/plugins/styles/qmodernwindowsstyle.dll" "$pkg/styles/" 2>/dev/null || true
 # Every DLL the exe and the plugins need, from Qt's bin or llvm-mingw's runtime (what
 # windeployqt works out): the closure of "DLL Name:" in objdump -p, system DLLs left out.
-python3 - "$pkg" "$QT_WIN/bin" "$LLVM_MINGW/x86_64-w64-mingw32/bin" "$LLVM_MINGW/bin/llvm-objdump" <<'PY'
-import os, shutil, subprocess, sys
-pkg, qtbin, rtbin, objdump = sys.argv[1:5]
-def deps(path):
-    out = subprocess.run([objdump, "-p", path], capture_output=True, text=True).stdout
-    return [l.split(":", 1)[1].strip() for l in out.splitlines() if "DLL Name:" in l]
-seen, todo = set(), [os.path.join(pkg, "burnout3-installer.exe")]
-for dp, _, fn in os.walk(os.path.join(pkg, "platforms")): todo += [os.path.join(dp, f) for f in fn]
-for dp, _, fn in os.walk(os.path.join(pkg, "styles")): todo += [os.path.join(dp, f) for f in fn]
-while todo:
-    cur = todo.pop()
-    for d in deps(cur):
-        key = d.lower()
-        if key in seen: continue
-        seen.add(key)
-        for folder in (qtbin, rtbin):
-            src = os.path.join(folder, d)
-            if os.path.isfile(src):
-                shutil.copy2(src, pkg)
-                todo.append(os.path.join(pkg, d))
-                break
-print("deployed:", ", ".join(sorted(f for f in os.listdir(pkg) if f.endswith(".dll"))))
-PY
+python3 "$here/deploy-pe-dlls.py" \
+    --package-dir "$pkg" \
+    --binary "$pkg/burnout3-installer.exe" \
+    --plugin-dir "$pkg/platforms" --plugin-dir "$pkg/styles" \
+    --search-dir "$QT_WIN/bin" \
+    --search-dir "$LLVM_MINGW/x86_64-w64-mingw32/bin" \
+    --objdump "$LLVM_MINGW/bin/llvm-objdump"
 
 . "$here/payload.sh"
 QT_NOTICE_KEEP= assemble_payload "$pkg/payload" "$pkg/licenses"

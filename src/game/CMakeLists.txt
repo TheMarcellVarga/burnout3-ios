@@ -15,6 +15,7 @@ if(ANDROID)
     # starts the executable again, and an app has none.
     add_library(burnout3 SHARED
         main.c
+        host_display.c
         install.c
         fatal.c
         controls.c
@@ -43,6 +44,7 @@ if(ANDROID)
 else()
 add_executable(burnout3
     main.c
+    host_display.c
     install.c
     fatal.c
     controls.c

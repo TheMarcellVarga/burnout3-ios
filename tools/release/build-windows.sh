@@ -94,32 +94,14 @@ if [ "$WITH_SETUP" = 1 ]; then
     cp "$B/setup/takedawn-setup.exe" "$PKG/"
     cp "$QTW/plugins/platforms/qwindows.dll" "$PKG/platforms/"
     cp "$QTW/plugins/styles/qmodernwindowsstyle.dll" "$PKG/styles/" 2>/dev/null || true
-    "${TAKEDAWN_PYTHON:-python3}" - "$PKG" "$QTW/bin" "$D/llvm-mingw/x86_64-w64-mingw32/bin" "$D/llvm-mingw/bin/llvm-objdump" <<'PY' || die "setup window: could not gather its DLLs"
-import os, shutil, subprocess, sys
-pkg, qtbin, rtbin, objdump = sys.argv[1:5]
-def deps(path):
-    out = subprocess.run([objdump, "-p", path], capture_output=True, text=True).stdout
-    return [l.split(":", 1)[1].strip() for l in out.splitlines() if "DLL Name:" in l]
-seen, todo = set(), [os.path.join(pkg, "takedawn-setup.exe")]
-for sub in ("platforms", "styles"):
-    for dp, _, fn in os.walk(os.path.join(pkg, sub)):
-        todo += [os.path.join(dp, f) for f in fn]
-while todo:
-    cur = todo.pop()
-    for d in deps(cur):
-        key = d.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        for folder in (qtbin, rtbin):
-            src = os.path.join(folder, d)
-            if os.path.isfile(src):
-                if not os.path.isfile(os.path.join(pkg, d)):
-                    shutil.copy2(src, pkg)
-                todo.append(os.path.join(pkg, d))
-                break
-print("==> setup window DLLs: " + ", ".join(sorted(f for f in os.listdir(pkg) if f.endswith(".dll"))))
-PY
+    "${TAKEDAWN_PYTHON:-python3}" "$REPO/tools/install/gui/packaging/deploy-pe-dlls.py" \
+        --package-dir "$PKG" \
+        --binary "$PKG/takedawn-setup.exe" \
+        --plugin-dir "$PKG/platforms" --plugin-dir "$PKG/styles" \
+        --search-dir "$QTW/bin" \
+        --search-dir "$D/llvm-mingw/x86_64-w64-mingw32/bin" \
+        --objdump "$D/llvm-mingw/bin/llvm-objdump" \
+        --label "==> setup window DLLs" || die "setup window: could not gather its DLLs"
     rm -rf "$PKG/licenses"; copy_licenses "$PKG/licenses" qt
     HAVE_SETUP=yes
 else
