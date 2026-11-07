@@ -15,6 +15,8 @@ static xbox_touch_draw find(const char *label) {
     CHECK(0); return (xbox_touch_draw){0};
 }
 static XBOX_GAMEPAD state(void) { XBOX_INPUT_STATE s; refresh(); xbox_InputTouchState(&s); return s.Gamepad; }
+/* Read exactly what the game sees, without an overlay/display-link refresh. */
+static XBOX_GAMEPAD raw_state(void) { XBOX_INPUT_STATE s; xbox_InputTouchState(&s); return s.Gamepad; }
 static void setup(float w,float h,float scale,int tablet) {
     xbox_InputTouchReset(); xbox_InputTouchSetMode(XBOX_TOUCH_ALWAYS);
     xbox_InputTouchSetHybrid(1); xbox_InputTouchSetScreen(w,h);
@@ -91,6 +93,25 @@ int main(void) {
     xbox_InputTouchFinger(XBOX_TOUCH_CANCEL,6,gas.x,gas.y); CHECK(state().bAnalogButtons[XBOX_BUTTON_RTRIGGER]==0);
     xbox_InputTouchFinger(XBOX_TOUCH_DOWN,7,gas.x,gas.y);
     xbox_InputTouchSetHybrid(0); CHECK(state().bAnalogButtons[XBOX_BUTTON_RTRIGGER]==0);
+    /* A slow renderer must not prolong driving pedals or replay old steering. */
+    setup(932,430,1,0);
+    stick=find(NULL); gas=find("GAS"); boost=find("BOOST"); brake=find("BRAKE");
+    xbox_touch_draw pedals[]={gas,boost,brake};
+    for(int i=0;i<3;i++) {
+        xbox_InputTouchFinger(XBOX_TOUCH_DOWN,20,pedals[i].x,pedals[i].y);
+        xbox_InputTouchFinger(XBOX_TOUCH_UP,20,0,0); /* No intervening game poll. */
+        XBOX_GAMEPAD released=raw_state();
+        CHECK(released.bAnalogButtons[XBOX_BUTTON_RTRIGGER]==0);
+        CHECK(released.bAnalogButtons[XBOX_BUTTON_LTRIGGER]==0);
+        CHECK(released.bAnalogButtons[XBOX_BUTTON_A]==0);
+    }
+    xbox_InputTouchFinger(XBOX_TOUCH_DOWN,21,stick.x,stick.y);
+    for(int i=0;i<100;i++) {
+        xbox_InputTouchFinger(XBOX_TOUCH_MOVE,21,stick.x+(i%2 ? -travel : travel),stick.y);
+        CHECK(raw_state().sThumbLX==(i%2 ? -32767 : 32767));
+    }
+    xbox_InputTouchFinger(XBOX_TOUCH_UP,21,0,0);
+    CHECK(raw_state().sThumbLX==0);
     printf("hybrid_touch: %d checks, %d failures\n",checks,failures);
     return failures!=0;
 }

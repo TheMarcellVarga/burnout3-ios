@@ -12,6 +12,7 @@
 #endif
 
 #include "controls.h"
+#include "install.h"
 #include "kernel.h"
 #include "platform/recomp_env.h"
 #include "platform/recomp_patch.h"

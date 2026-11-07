@@ -25,6 +25,12 @@ add_subdirectory(${XBOXRECOMP_DIR}/tests/mmio_decode_a64 mmio_decode_a64)
 # Validate the shader emitters with the development Mac's Metal compiler.
 # This does not establish iPhone GPU compatibility or rendering correctness.
 enable_language(OBJC)
+add_executable(ios_drawable_queue drawable_queue_test.m
+    ${XBOXRECOMP_DIR}/src/video/ios_drawable_queue.m)
+target_include_directories(ios_drawable_queue PRIVATE ${XBOXRECOMP_DIR}/src/video)
+target_link_libraries(ios_drawable_queue PRIVATE "-framework Foundation")
+add_test(NAME ios_drawable_queue COMMAND ios_drawable_queue)
+set_tests_properties(ios_drawable_queue PROPERTIES TIMEOUT 10)
 add_executable(ios_mobile_preferences mobile_preferences_test.m ../mobile_preferences.m)
 target_include_directories(ios_mobile_preferences PRIVATE ..)
 target_link_libraries(ios_mobile_preferences PRIVATE "-framework Foundation")

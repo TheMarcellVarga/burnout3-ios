@@ -111,6 +111,18 @@ behavior as follow-up validation for the main Xbox implementation.
 
 ## Host controller regression
 
+The touch latency fix moves Metal drawable acquisition off the iOS event
+thread, so GPU buffer pressure cannot block touch delivery there. Acquisition
+keeps at most one pending request or ready drawable; the presenter uses the
+latest game frame when a drawable becomes available. GAS, BRAKE and BOOST
+also release immediately instead of waiting for two game polls and an overlay
+refresh. Menu and one-shot button taps retain their existing protection.
+
+The host checks include blocked drawable acquisition, cancellation, immediate
+pedal release and repeated steering reversals without overlay redraws. These
+checks do not establish end-to-end latency or sustained high-speed race
+performance on an iPhone; hands-on device validation is still required.
+
 After preparation:
 
 ```sh
