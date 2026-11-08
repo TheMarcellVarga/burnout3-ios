@@ -17,16 +17,33 @@ int main(int argc,char **argv) {
         NSString *suite=[@"dev.burnout3.tests." stringByAppendingString:NSUUID.UUID.UUIDString];
         NSUserDefaults *prefs=[[[NSUserDefaults alloc] initWithSuiteName:suite] autorelease];
         for(NSUInteger i=0;i<BO3MobileSettings().count;i++) CHECK(BO3MobileChoice(prefs,i)==0);
-        BO3MobileSetChoice(prefs,0,1); CHECK(BO3MobileChoice(prefs,0)==1);
+        BO3MobileSetChoice(prefs,2,1); CHECK(BO3MobileChoice(prefs,2)==1);
         [prefs synchronize];
         NSUserDefaults *reloaded=[[[NSUserDefaults alloc] initWithSuiteName:suite] autorelease];
-        CHECK(BO3MobileChoice(reloaded,0)==1);
+        CHECK(BO3MobileChoice(reloaded,2)==1);
         [prefs setInteger:99 forKey:@"ios.touch_visibility"]; CHECK(BO3MobileChoice(prefs,3)==0);
         [prefs setObject:@"1" forKey:@"ios.aspect"]; CHECK(BO3MobileChoice(prefs,1)==0);
-        BO3MobileSetChoice(prefs,0,-1); BO3MobileSetChoice(prefs,0,99); CHECK(BO3MobileChoice(prefs,0)==1);
+        BO3MobileSetChoice(prefs,2,-1); BO3MobileSetChoice(prefs,2,99); CHECK(BO3MobileChoice(prefs,2)==1);
+        /* Unavailable options stay off, including preferences from older builds. */
+        for (NSNumber *setting in @[@1,@5]) {
+            NSUInteger i=setting.unsignedIntegerValue;
+            CHECK(!BO3MobileChoiceAvailable(i,1));
+            BO3MobileSetChoice(prefs,i,1); CHECK(BO3MobileChoice(prefs,i)==0);
+            [prefs setInteger:1 forKey:[@"ios." stringByAppendingString:BO3MobileSettings()[i][@"key"]]];
+            CHECK(BO3MobileChoice(prefs,i)==0);
+        }
+        CHECK(!BO3MobileChoiceAvailable(99,0));
+        CHECK(!BO3MobileChoiceAvailable(2,-1));
+        CHECK(!BO3MobileChoiceAvailable(2,99));
         BO3MobileSetChoice(prefs,99,0); CHECK(BO3MobileChoice(prefs,99)==0);
+        /* Sharper remains selectable and survives loading a stored preference. */
+        CHECK(BO3MobileChoiceAvailable(0,1));
+        BO3MobileSetChoice(prefs,0,1); CHECK(BO3MobileChoice(prefs,0)==1);
+        [prefs synchronize];
+        CHECK(BO3MobileChoice(reloaded,0)==1);
         unsetenv("RECOMP_RENDER_SCALE"); unsetenv("RECOMP_DISPLAY_WIDESCREEN");
         BO3MobileApplyLaunchEnvironment(prefs); CHECK(!strcmp(getenv("RECOMP_RENDER_SCALE"),"2"));
+        CHECK(!strcmp(getenv("RECOMP_DISPLAY_WIDESCREEN"),"0"));
         setenv("RECOMP_RENDER_SCALE","3",1); BO3MobileApplyLaunchEnvironment(prefs);
         CHECK(!strcmp(getenv("RECOMP_RENDER_SCALE"),"3")); /* Explicit diagnostics win. */
         [prefs setObject:@"keep" forKey:@"other.preference"];

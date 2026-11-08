@@ -2,6 +2,7 @@
 
 /* Native preferences stay separate from the PS2 port and desktop settings. */
 NSArray<NSDictionary *> *BO3MobileSettings(void);
+BOOL BO3MobileChoiceAvailable(NSUInteger setting, NSInteger choice);
 NSInteger BO3MobileChoice(NSUserDefaults *defaults, NSUInteger setting);
 void BO3MobileSetChoice(NSUserDefaults *defaults, NSUInteger setting, NSInteger choice);
 void BO3MobileReset(NSUserDefaults *defaults);

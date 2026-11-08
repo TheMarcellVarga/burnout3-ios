@@ -8,22 +8,29 @@ NSArray<NSDictionary *> *BO3MobileSettings(void) {
     dispatch_once(&once, ^{
         items = [@[
             @{@"key":@"resolution", @"title":@"Render resolution", @"choices":@[@"Original · 640 × 480", @"Sharper · 1280 × 960"],
-              @"help":@"Sharper increases detail and GPU load. Original is the tested baseline. Applies when you next start the game.", @"env":@"RECOMP_RENDER_SCALE", @"values":@[@"1",@"2"]},
+              @"help":@"Sharper increases detail and GPU load. Original uses less GPU power. Applies after closing and reopening the app.", @"env":@"RECOMP_RENDER_SCALE", @"values":@[@"1",@"2"]},
             @{@"key":@"aspect", @"title":@"Picture shape", @"choices":@[@"Original · 4:3", @"Widescreen · 16:9"],
-              @"help":@"Widescreen adjusts the game camera and keeps the HUD in proportion. The full picture fits without cropping its sides. Applies when you next start the game.", @"env":@"RECOMP_DISPLAY_WIDESCREEN", @"values":@[@"0",@"1"]},
+              @"help":@"Original is the supported picture shape. Widescreen is unavailable in this build.", @"env":@"RECOMP_DISPLAY_WIDESCREEN", @"values":@[@"0",@"1"]},
             @{@"key":@"touch_size", @"title":@"Control size", @"choices":@[@"Standard", @"Large"],
-              @"help":@"Enlarge the buttons and steering area. Changes apply immediately."},
+              @"help":@"Changes apply immediately."},
             @{@"key":@"touch_visibility", @"title":@"Control visibility", @"choices":@[@"Subtle", @"Medium", @"High"],
-              @"help":@"Controls brighten when pressed. Changes apply immediately."},
+              @"help":@"Controls brighten when pressed."},
             @{@"key":@"auto_gas", @"title":@"Automatic acceleration", @"choices":@[@"Off", @"On"],
-              @"help":@"Hold the accelerator automatically during races. Brake overrides it. Changes apply immediately."},
+              @"help":@"Accelerate automatically during races. Brake overrides it."},
             @{@"key":@"touch_layout", @"title":@"Control layout", @"choices":@[@"Hybrid", @"Xbox prototype"],
-              @"help":@"Hybrid combines a stable analog stick with a compact driving cluster. Touch farther from the stick to float its base. Xbox prototype restores the first layout. Changes apply immediately."},
+              @"help":@"The standard layout uses an analog stick and compact driving controls. The legacy layout is unavailable in this build."},
             @{@"key":@"steering_response", @"title":@"Steering response", @"choices":@[@"Standard", @"Gentle", @"Quick"],
-              @"help":@"Gentle gives finer steering near the center. Quick turns sooner. Every setting reaches full steering and releases immediately; the D-pad and physical controllers stay unchanged."}
+              @"help":@"Gentle gives finer control near the center. Quick turns sooner."}
         ] retain];
     });
     return items;
+}
+BOOL BO3MobileChoiceAvailable(NSUInteger setting, NSInteger choice) {
+    if (setting >= BO3MobileSettings().count || choice < 0 ||
+        choice >= (NSInteger)[BO3MobileSettings()[setting][@"choices"] count]) return NO;
+    /* Picture shape and legacy touch layout remain restricted; resolution
+     * preferences, including Sharper from earlier builds, remain available. */
+    return !((setting == 1 || setting == 5) && choice != 0);
 }
 static NSString *PreferenceKey(NSUInteger setting) {
     return [@"ios." stringByAppendingString:BO3MobileSettings()[setting][@"key"]];
@@ -33,11 +40,10 @@ NSInteger BO3MobileChoice(NSUserDefaults *defaults, NSUInteger setting) {
     id value = [defaults objectForKey:PreferenceKey(setting)];
     if (![value isKindOfClass:NSNumber.class]) return 0;
     NSInteger choice = [value integerValue];
-    return choice >= 0 && choice < (NSInteger)[BO3MobileSettings()[setting][@"choices"] count] ? choice : 0;
+    return BO3MobileChoiceAvailable(setting,choice) ? choice : 0;
 }
 void BO3MobileSetChoice(NSUserDefaults *defaults, NSUInteger setting, NSInteger choice) {
-    if (setting >= BO3MobileSettings().count || choice < 0 ||
-        choice >= (NSInteger)[BO3MobileSettings()[setting][@"choices"] count]) return;
+    if (!BO3MobileChoiceAvailable(setting,choice)) return;
     [defaults setInteger:choice forKey:PreferenceKey(setting)];
 }
 void BO3MobileReset(NSUserDefaults *defaults) {

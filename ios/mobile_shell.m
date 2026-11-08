@@ -45,6 +45,17 @@ void BO3ApplyTouchPreferences(void) {
     xbox_InputTouchSetHybrid(BO3MobileChoice(d,5)==0);
     xbox_InputTouchSetSteeringResponse((int)BO3MobileChoice(d,6));
 }
+static void DisableCell(UITableViewCell *cell) {
+    cell.userInteractionEnabled=NO;
+    cell.selectionStyle=UITableViewCellSelectionStyleNone;
+    UIListContentConfiguration *content=(UIListContentConfiguration *)cell.contentConfiguration;
+    content.textProperties.color=UIColor.secondaryLabelColor;
+    content.secondaryTextProperties.color=UIColor.secondaryLabelColor;
+    cell.contentConfiguration=content;
+    cell.accessibilityTraits|=UIAccessibilityTraitNotEnabled;
+}
+/* Preference IDs are stable; the legacy layout is intentionally omitted. */
+static NSUInteger TouchSetting(NSInteger row) { const NSUInteger settings[]={2,3,6,4}; return settings[row]; }
 static UITableViewCell *Cell(UITableView *table, NSString *title, NSString *detail) {
     UITableViewCell *cell=[[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil] autorelease];
     UIListContentConfiguration *content=cell.defaultContentConfiguration;
@@ -73,10 +84,14 @@ static UITableViewCell *Cell(UITableView *table, NSString *title, NSString *deta
     UITableViewCell *cell=Cell(t,BO3MobileSettings()[self.setting][@"choices"][p.row],nil);
     BOOL selected=BO3MobileChoice(NSUserDefaults.standardUserDefaults,self.setting)==p.row;
     cell.accessoryType=selected ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
-    cell.accessibilityTraits|=selected ? UIAccessibilityTraitSelected : UIAccessibilityTraitButton;
+    cell.accessibilityTraits|=UIAccessibilityTraitButton;
+    if(selected) cell.accessibilityTraits|=UIAccessibilityTraitSelected;
+    if(!BO3MobileChoiceAvailable(self.setting,p.row)) DisableCell(cell);
     return cell;
 }
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p {
+    [t deselectRowAtIndexPath:p animated:YES];
+    if(!BO3MobileChoiceAvailable(self.setting,p.row)) return;
     BO3MobileSetChoice(NSUserDefaults.standardUserDefaults,self.setting,p.row);
     if(self.inGame) BO3ApplyTouchPreferences();
     [t reloadData];
@@ -89,7 +104,7 @@ static UITableViewCell *Cell(UITableView *table, NSString *title, NSString *deta
 @end
 @implementation BO3SettingsController
 - (void)viewDidLoad {
-    [super viewDidLoad]; self.title=@"iOS Settings";
+    [super viewDidLoad]; self.title=@"Settings";
     self.tableView.rowHeight=UITableViewAutomaticDimension; self.tableView.estimatedRowHeight=56;
     self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(done)] autorelease];
     if(self.canReturnToLauncher) {
@@ -110,56 +125,44 @@ static UITableViewCell *Cell(UITableView *table, NSString *title, NSString *deta
     [self dismissViewControllerAnimated:YES completion:^{ SessionRelease(BO3_HOLD_SETTINGS); ShowSessionLauncher(host); }];
 }
 - (void)presentationControllerDidDismiss:(UIPresentationController *)p { if(self.inGame) SessionRelease(BO3_HOLD_SETTINGS); }
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)t { return self.canReturnToLauncher ? 4 : 3; }
-- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return s==0 ? 2 : s==1 ? (NSInteger)BO3MobileSettings().count-2 : s==2 ? 2 : 1; }
-- (NSString *)tableView:(UITableView *)t titleForHeaderInSection:(NSInteger)s { return @[@"Display",@"Touch controls",@"Preferences",@"Session"][s]; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)t { return 3; }
+- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return s==0 ? 2 : s==1 ? 4 : 1; }
+- (NSString *)tableView:(UITableView *)t titleForHeaderInSection:(NSInteger)s { return @[@"Display",@"Touch controls",@"About"][s]; }
 - (NSString *)tableView:(UITableView *)t titleForFooterInSection:(NSInteger)s {
-    if(s==3) return @"Your current game stays paused. Choose Resume game on the launcher to return. Permanent progress uses the game’s Save Profile.";
-    return s==0 ? @"Display changes apply the next time you launch the app. Restart between races so your progress can save."
-        : s==1 ? @"In races: steer on the left; GAS accelerates, BRAKE slows down and BOOST also holds the accelerator. Menu navigation uses the D-pad, A to select and B to go back."
-        : @"Resetting iOS settings keeps your game files and saved profiles. Built on Takedawn and xboxrecomp; their license notices are included with this app.";
+    return s==0 ? @"Resolution changes apply after closing and reopening the app. Sharper increases GPU load." : nil;
 }
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)p {
-    if(p.section==3) { UITableViewCell *c=Cell(t,@"Return to iOS launcher",nil); c.accessibilityTraits|=UIAccessibilityTraitButton; c.accessibilityIdentifier=@"ios.returnToLauncher"; return c; }
-    if(p.section==2) { UITableViewCell *c=Cell(t,p.row==0 ? @"Credits & licenses" : @"Reset iOS settings",nil); c.accessibilityTraits|=UIAccessibilityTraitButton; return c; }
-    NSUInteger i=p.section==0 ? p.row : p.row+2;
+    if(p.section==2) { UITableViewCell *c=Cell(t,@"Credits & licenses",nil); c.accessoryType=UITableViewCellAccessoryDisclosureIndicator; c.accessibilityTraits|=UIAccessibilityTraitButton; return c; }
+    NSUInteger i=p.section==0 ? p.row : TouchSetting(p.row);
     NSDictionary *item=BO3MobileSettings()[i];
     UITableViewCell *cell=Cell(t,item[@"title"],item[@"choices"][BO3MobileChoice(NSUserDefaults.standardUserDefaults,i)]);
-    cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
+    if(p.section==0 && p.row==1) DisableCell(cell);
+    else cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
     cell.accessibilityIdentifier=[@"ios.setting." stringByAppendingString:item[@"key"]];
     return cell;
 }
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p {
     [t deselectRowAtIndexPath:p animated:YES];
-    if(p.section==3 && self.canReturnToLauncher) {
-        [self returnToLauncher];
-        return;
-    }
+    if(p.section==0 && p.row==1) return;
     if(p.section==2) {
-        if(p.row==0) {
-            UIViewController *credits=[[[UIViewController alloc] init] autorelease];
-            credits.title=@"Credits & licenses";
-            UITextView *text=[[[UITextView alloc] initWithFrame:CGRectZero] autorelease];
-            text.editable=NO; text.font=[UIFont preferredFontForTextStyle:UIFontTextStyleBody];
-            text.adjustsFontForContentSizeCategory=YES;
-            text.backgroundColor=UIColor.systemBackgroundColor; text.textColor=UIColor.labelColor;
-            text.textContainerInset=UIEdgeInsetsMake(20,20,20,20);
-            NSMutableString *notices=[NSMutableString stringWithString:@"Burnout 3 iOS · Xbox edition\n\nAn iOS adaptation of Takedawn and xboxrecomp, carrying forward the native app work from our PS2 port. Game content and trademarks belong to their respective owners. No game data is included.\n\n"];
-            NSArray *paths=@[@"LICENSE",@"THIRD_PARTY_NOTICES.md",@"licenses/NOTICE",@"licenses/LGPL-2.1.txt",@"licenses/SDL2-Zlib.txt",@"licenses/ADPCM-XQ-BSD-3-Clause.txt"];
-            for(NSString *path in paths) {
-                NSString *content=[NSString stringWithContentsOfFile:[NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:path] encoding:NSUTF8StringEncoding error:NULL];
-                if(content) [notices appendFormat:@"%@\n\n%@\n\n",path,content];
-            }
-            text.text=notices; credits.view=text;
-            [self.navigationController pushViewController:credits animated:YES]; return;
+        UIViewController *credits=[[[UIViewController alloc] init] autorelease];
+        credits.title=@"Credits & licenses";
+        UITextView *text=[[[UITextView alloc] initWithFrame:CGRectZero] autorelease];
+        text.editable=NO; text.font=[UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+        text.adjustsFontForContentSizeCategory=YES;
+        text.backgroundColor=UIColor.systemBackgroundColor; text.textColor=UIColor.labelColor;
+        text.textContainerInset=UIEdgeInsetsMake(20,20,20,20);
+        NSMutableString *notices=[NSMutableString stringWithString:@"Burnout 3 for iOS\n\nBased on Takedawn and xboxrecomp. Game content and trademarks belong to their respective owners. Game files are supplied separately.\n\n"];
+        NSArray *paths=@[@"LICENSE",@"THIRD_PARTY_NOTICES.md",@"licenses/NOTICE",@"licenses/LGPL-2.1.txt",@"licenses/SDL2-Zlib.txt",@"licenses/ADPCM-XQ-BSD-3-Clause.txt"];
+        for(NSString *path in paths) {
+            NSString *content=[NSString stringWithContentsOfFile:[NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:path] encoding:NSUTF8StringEncoding error:NULL];
+            if(content) [notices appendFormat:@"%@\n\n%@\n\n",path,content];
         }
-        UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Reset iOS settings?" message:@"Your game files and saved profiles will stay on this device." preferredStyle:UIAlertControllerStyleAlert];
-        [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-        [alert addAction:[UIAlertAction actionWithTitle:@"Reset settings" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *a){ BO3MobileReset(NSUserDefaults.standardUserDefaults); if(self.inGame) BO3ApplyTouchPreferences(); [t reloadData]; }]];
-        [self presentViewController:alert animated:YES completion:nil]; return;
+        text.text=notices; credits.view=text;
+        [self.navigationController pushViewController:credits animated:YES]; return;
     }
     BO3ChoicesController *choices=[[[BO3ChoicesController alloc] initWithStyle:UITableViewStyleInsetGrouped] autorelease];
-    choices.setting=p.section==0 ? p.row : p.row+2; choices.inGame=self.inGame;
+    choices.setting=p.section==0 ? p.row : TouchSetting(p.row); choices.inGame=self.inGame;
     [self.navigationController pushViewController:choices animated:YES];
 }
 @end
@@ -175,7 +178,7 @@ void BO3ShowSettings(UIViewController *host, BOOL inGame) {
     [host presentViewController:nav animated:YES completion:nil];
     if(settings.canReturnToLauncher && getenv("RECOMP_IOS_UI_TEST"))
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,12*NSEC_PER_SEC),dispatch_get_main_queue(),^{
-            if(settings.navigationController.presentingViewController) [settings tableView:settings.tableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:3]];
+            if(settings.navigationController.presentingViewController) [settings returnToLauncher];
         });
     if(inGame) XR_NOTICE("[IOS SESSION] native settings opened, paused=%d\n",xbox_HostPaused());
 }
